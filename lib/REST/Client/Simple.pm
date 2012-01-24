@@ -1,6 +1,6 @@
 package REST::Client::Simple;
 
-use feature 'switch';
+use 5.010;
 use Any::Moose 'Role';
 use REST::Client;
 use Data::Dumper;
