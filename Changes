@@ -1,5 +1,9 @@
 Revision history for REST-Client-Simple
 
+0.2     2012-01-24T11:32:53
+        use 5.010 instead of feature to prevent building tests on lower
+        perl versions
+
 0.1     2012-01-18T02:50:14
         initial release.
 
