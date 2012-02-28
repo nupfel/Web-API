@@ -2,7 +2,8 @@ package REST::Client::Simple;
 
 use 5.010;
 use Any::Moose 'Role';
-use REST::Client;
+use LWP::UserAgent;
+use HTTP::Cookies;
 use Data::Dumper;
 use XML::Simple;
 use URI::Escape::XS qw/uri_escape uri_unescape/;
@@ -18,11 +19,11 @@ REST::Client::Simple - A Simple base module to implement almost every RESTful AP
 
 =head1 VERSION
 
-Version 0.2
+Version 0.3
 
 =cut
 
-our $VERSION = "0.2";
+our $VERSION = "0.3";
 
 =head1 SYNOPSIS
 
@@ -224,6 +225,32 @@ has 'mapping' => (
 =cut
 
 has 'wrapper_key' => (
+    is      => 'rw',
+    isa     => 'Str',
+    clearer => 'clear_wrapper_key',
+);
+
+=head2 header (optional)
+
+get/set custom headers sent with each request
+
+=cut
+
+has 'header' => (
+    is      => 'rw',
+    lazy    => 1,
+    default => sub { {} },
+);
+
+=head2
+
+get/set authentication type. currently supported are only 'basic' or none
+
+default: basic
+
+=cut
+
+has 'auth_type' => (
     is  => 'rw',
     isa => 'Str',
 );
@@ -266,18 +293,18 @@ has 'timeout' => (
     required => 1,
 );
 
-=head2 client (optional)
+=head2 agent (optional)
 
 get/set REST::Client object
 
 =cut
 
-has 'client' => (
+has 'agent' => (
     is       => 'rw',
-    isa      => 'REST::Client',
+    isa      => 'LWP::UserAgent',
     lazy     => 1,
     required => 1,
-    builder  => '_build_client',
+    builder  => '_build_agent',
 );
 
 =head2 content_type (optional)
@@ -327,13 +354,20 @@ has 'debug' => (
     lazy    => 1,
 );
 
-sub _build_client {
+has 'cookies' => (
+    is      => 'rw',
+    isa     => 'HTTP::Cookies',
+    default => sub { HTTP::Cookies->new },
+);
+
+sub _build_agent {
     my ($self) = @_;
 
-    return REST::Client->new(
-        useragent => LWP::UserAgent->new(agent => $self->user_agent),
-        timeout   => $self->timeout,
-        follow    => 1,
+    return LWP::UserAgent->new(
+        agent      => $self->user_agent,
+        cookie_jar => $self->cookies,
+        timeout    => $self->timeout,
+        ssl_opts   => { verify_hostname => 0 },
     );
 }
 
@@ -350,7 +384,7 @@ sub decode {
     eval {
         given ($content_type)
         {
-            when (/plain/) { $data = $content; }
+            when (/text/) { $data = $content; }
             when (/urlencoded/) {
                 foreach (split(/&/, $content)) {
                     my ($key, $value) = split(/=/, $_);
@@ -363,7 +397,7 @@ sub decode {
     };
     return { error => "couldn't decode payload using $content_type: $@\n"
             . Dumper($content) }
-        if ($@);
+        if ($@ || ref \$content ne 'SCALAR');
 
     return $data;
 }
@@ -379,9 +413,10 @@ sub encode {
     eval {
         given ($content_type)
         {
-            when (/plain/) { $payload = $options; }
+            when (/text/) { $payload = $options; }
             when (/urlencoded/) {
-                $payload .= uri_escape($_ . '=' . $options->{$_}) . '&'
+                $payload .=
+                    uri_escape($_) . '=' . uri_escape($options->{$_}) . '&'
                     foreach (keys %$options);
                 chop($payload);
             }
@@ -393,7 +428,8 @@ sub encode {
     };
     return { error => "couldn't encode payload using $content_type: $@\n"
             . Dumper($options) }
-        if ($@);
+        if ($@ || ref \$payload ne 'SCALAR');
+
     return $payload;
 }
 
@@ -404,30 +440,61 @@ sub encode {
 sub talk {
     my ($self, $command, $uri, $options, $content_type) = @_;
 
-    my $method = $command->{method};
+    my $method = uc $command->{method};
 
-    $uri->userinfo($self->user . ':' . $self->api_key);
+    $uri->userinfo($self->user . ':' . $self->api_key)
+        if ($self->auth_type and (lc $self->auth_type eq 'basic'));
 
-    print "method: $method\nuri: $uri\n" if $self->debug;
-
+    my $payload;
     if (keys %$options) {
-        my $payload = $self->encode($options, $content_type->{out});
-        return $payload if (ref $payload);
-        print "payload: $payload\n" if $self->debug;
+        $payload = $self->encode($options, $content_type->{out});
 
-        $self->client->$method(
-            $uri, $payload, {
-                "Accept"       => $content_type->{in},
-                "Content-type" => $content_type->{out},
-            },
-        );
-    }
-    else {
-        $self->client->$method($uri);
-    }
-    print $self->client->responseContent . $/ if $self->debug;
+        # got an error while encoding, return it
+        return $payload if (ref $payload eq 'HASH' && exists $payload->{error});
 
-    return $self->decode($self->client->responseContent, $content_type->{in});
+        print "send payload: $payload\n" if $self->debug;
+
+        $uri .= '?' . $payload
+            if (($method eq 'GET') and ($content_type->{out} =~ m/urlencoded/));
+    }
+
+    print "uri: $method $uri\n" if $self->debug;
+    print "extra header:\n" . Dumper($self->header)
+        if (%{ $self->header } && $self->debug);
+
+    # build headers/request
+    my $headers =
+        HTTP::Headers->new(%{ $self->header }, "Accept" => $content_type->{in});
+    my $request = HTTP::Request->new($method, $uri, $headers);
+    unless ($method =~ m/^(GET|HEAD|DELETE)$/) {
+        $request->header("Content-type" => $content_type->{out});
+        $request->content($payload);
+    }
+
+    # do the actual work
+    $self->agent->cookie_jar($self->cookies);
+    my $response = $self->agent->request($request);
+
+    unless ($response->is_success || $response->is_redirect) {
+        print "error: " . $response->status_line . $/ if $self->debug;
+        return { error => "request failed: " . $response->status_line };
+    }
+
+    print "recv payload: " . $response->decoded_content . $/
+        if $self->debug;
+
+    # collect response headers
+    my $response_headers;
+    $response_headers->{$_} = $response->header($_)
+        foreach ($response->header_field_names);
+
+    return {
+        header => $response_headers,
+        code   => $response->code,
+        content =>
+            $self->decode($response->decoded_content, $content_type->{in}),
+    };
+
 }
 
 =head2 map_options
@@ -437,23 +504,25 @@ sub talk {
 sub map_options {
     my ($self, $options, $command) = @_;
 
-    print "mapping hash:\n" . Dumper($self->mapping) if $self->debug;
+    unless ($command->{no_mapping}) {
+        print "mapping hash:\n" . Dumper($self->mapping) if $self->debug;
 
-    my %opts;
+        my %opts;
 
-    # first include assumed to be already mapped default attributes
-    %opts = %{ $command->{default_attributes} }
-        if (exists $command->{default_attributes});
+        # first include assumed to be already mapped default attributes
+        %opts = %{ $command->{default_attributes} }
+            if (exists $command->{default_attributes});
 
-    # do the key and value mapping of options hash and overwrite defaults
-    foreach my $key (keys %$options) {
-        my $newkey = $self->mapping->{$key} if ($self->mapping->{$key});
-        my $newvalue = $self->mapping->{ $options->{$key} }
-            if ($self->mapping->{ $options->{$key} });
+        # do the key and value mapping of options hash and overwrite defaults
+        foreach my $key (keys %$options) {
+            my $newkey = $self->mapping->{$key} if ($self->mapping->{$key});
+            my $newvalue = $self->mapping->{ $options->{$key} }
+                if ($self->mapping->{ $options->{$key} });
 
-        $opts{ $newkey || $key } = $newvalue || $options->{$key};
+            $opts{ $newkey || $key } = $newvalue || $options->{$key};
+        }
+        $options = \%opts;
     }
-    $options = \%opts;
 
     # check existence of mandatory attributes
     if ($command->{mandatory_attributes}) {
@@ -507,35 +576,27 @@ sub AUTOLOAD {
     $path .= '.' . $self->extension if (defined $self->extension);
     $uri->path($path);
 
+    # configure in/out content types
     my $content_type;
     $content_type->{in} =
            $self->commands->{$name}->{incoming_content_type}
         || $self->commands->{$name}->{content_type}
         || $self->incoming_content_type
         || $self->content_type;
-
     $content_type->{out} =
            $self->commands->{$name}->{outgoing_content_type}
         || $self->commands->{$name}->{content_type}
         || $self->outgoing_content_type
         || $self->content_type;
 
+    # manage options
     $options = $self->map_options($options, $self->commands->{$name})
-        if ((keys %$options) and ($content_type->{out} =~ m/(xml|json)/));
+        if (((keys %$options) and ($content_type->{out} =~ m/(xml|json)/))
+        or (exists $self->commands->{$name}->{default_attributes}));
     return $options if (exists $options->{error});
 
-    my $result =
-        $self->talk($self->commands->{$name}, $uri, $options, $content_type);
-
-    my $headers;
-    $headers->{$_} = $self->client->responseHeader($_)
-        foreach ($self->client->responseHeaders);
-
-    return {
-        header  => $headers,
-        code    => $self->client->responseCode,
-        content => $result,
-    };
+    # do the call
+    return $self->talk($self->commands->{$name}, $uri, $options, $content_type);
 }
 
 =head1 AUTHOR
