@@ -9,7 +9,8 @@ license  'perl';
 build_requires 'Test::More';
 
 requires 'Any::Moose';
-requires 'REST::Client';
+requires 'LWP::UserAgent';
+requires 'HTTP::Cookies';
 requires 'Data::Dumper';
 requires 'XML::Simple';
 requires 'URI::Escape::XS';

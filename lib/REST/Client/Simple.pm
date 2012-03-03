@@ -494,7 +494,6 @@ sub talk {
         content =>
             $self->decode($response->decoded_content, $content_type->{in}),
     };
-
 }
 
 =head2 map_options
