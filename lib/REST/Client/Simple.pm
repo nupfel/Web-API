@@ -503,6 +503,20 @@ sub talk {
 sub map_options {
     my ($self, $options, $command) = @_;
 
+    # check existence of mandatory attributes
+    if ($command->{mandatory_attributes}) {
+        print "mandatory keys:\n"
+            . Dumper(\@{ $command->{mandatory_attributes} })
+            if $self->debug;
+        my @missing_attrs;
+        foreach my $attr (@{ $command->{mandatory_attributes} }) {
+            push(@missing_attrs, $attr) unless (exists $options->{$attr});
+        }
+        return { error => 'mandatory attributes for this command missing: '
+                . join(', ', @missing_attrs) }
+            if @missing_attrs;
+    }
+
     unless ($command->{no_mapping}) {
         print "mapping hash:\n" . Dumper($self->mapping) if $self->debug;
 
@@ -521,20 +535,6 @@ sub map_options {
             $opts{ $newkey || $key } = $newvalue || $options->{$key};
         }
         $options = \%opts;
-    }
-
-    # check existence of mandatory attributes
-    if ($command->{mandatory_attributes}) {
-        print "mandatory keys:\n"
-            . Dumper(\@{ $command->{mandatory_attributes} })
-            if $self->debug;
-        my @missing_attrs;
-        foreach my $attr (@{ $command->{mandatory_attributes} }) {
-            push(@missing_attrs, $attr) unless (exists $options->{$attr});
-        }
-        return { error => 'mandatory attributes for this command missing: '
-                . join(', ', @missing_attrs) }
-            if @missing_attrs;
     }
 
     # wrap all options in wrapper key if required
@@ -590,7 +590,9 @@ sub AUTOLOAD {
 
     # manage options
     $options = $self->map_options($options, $self->commands->{$name})
-        if (((keys %$options) and ($content_type->{out} =~ m/(xml|json)/))
+        if ((
+                (keys %$options)
+            and ($content_type->{out} =~ m/(xml|json|urlencoded)/))
         or (exists $self->commands->{$name}->{default_attributes}));
     return $options if (exists $options->{error});
 
