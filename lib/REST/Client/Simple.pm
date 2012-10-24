@@ -19,7 +19,7 @@ REST::Client::Simple - A Simple base module to implement almost every RESTful AP
 
 =head1 VERSION
 
-Version 0.3
+Version 0.3.3
 
 =cut
 
