@@ -1,4 +1,4 @@
-Revision history for REST-Client-Simple
+Revision history for Web-API
 
 0.3     2012-10-24T11:21:41
         replaced REST::Client with LWP::UserAgent + HTTP::Cookies for more control

@@ -11,7 +11,7 @@ inc/Module/Install/Makefile.pm
 inc/Module/Install/Metadata.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
-lib/REST/Client/Simple.pm
+lib/Web/API.pm
 Makefile.PL
 MANIFEST
 MANIFEST.SKIP

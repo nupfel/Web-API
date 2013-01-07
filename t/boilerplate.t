@@ -49,7 +49,7 @@ TODO: {
     "placeholder date/time"       => qr(Date/time)
   );
 
-  module_boilerplate_ok('lib/REST/Client/Simple.pm');
+  module_boilerplate_ok('lib/Web/API.pm');
 
 
 }

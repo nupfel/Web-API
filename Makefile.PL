@@ -1,8 +1,8 @@
 use 5.010;
 use inc::Module::Install;
 
-name     'REST-Client-Simple';
-all_from 'lib/REST/Client/Simple.pm';
+name     'Web-API';
+all_from 'lib/Web/API.pm';
 author   q{Tobias Kirschstein <mail@lev.geek.nz>};
 license  'perl';
 

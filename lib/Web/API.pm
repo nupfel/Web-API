@@ -1,4 +1,4 @@
-package REST::Client::Simple;
+package Web::API;
 
 use 5.010;
 use Any::Moose 'Role';
@@ -15,11 +15,11 @@ our $AUTOLOAD;
 
 =head1 NAME
 
-REST::Client::Simple - A Simple base module to implement almost every RESTful API with just a few lines of configuration
+Web::API - A Simple base module to implement almost every RESTful API with just a few lines of configuration
 
 =head1 VERSION
 
-Version 0.3.3
+Version 0.3
 
 =cut
 
@@ -33,7 +33,7 @@ Implement the RESTful API of your choice in 10 minutes, roughly.
 
     use Any::Moose;
     use Data::Dumper;
-    with 'REST::Client::Simple';
+    with 'Web::API';
 
     our $VERSION = "0.1";
 
@@ -54,7 +54,7 @@ Implement the RESTful API of your choice in 10 minutes, roughly.
                         required_automatic_backup      => 0,
                         swap_disk_size                 => 1,
                     },
-                    mandatory_attributes => [
+                    mandatory => [
                         'label',
                         'hostname',
                         'template_id',
@@ -151,7 +151,7 @@ the following keys are valid/possible:
     post_id_path
     wrapper_key
     default_attributes
-    mandatory_attributes
+    mandatory
     extension
     content_type
     incoming_content_type
@@ -183,18 +183,6 @@ has 'base_url' => (
     isa => 'Str',
 );
 
-=head2 user (required)
-
-get/set username/account name
-
-=cut
-
-has 'user' => (
-    is       => 'rw',
-    isa      => 'Str',
-    required => 1,
-);
-
 =head2 api_key (required)
 
 get/set api_key
@@ -205,6 +193,29 @@ has 'api_key' => (
     is       => 'rw',
     isa      => 'Str',
     required => 1,
+);
+
+=head2 user (optional)
+
+get/set username/account name
+
+=cut
+
+has 'user' => (
+    is  => 'rw',
+    isa => 'Str',
+);
+
+=head2 api_key_field (optional)
+
+get/set name of the hash key in the POST data structure that has to hold the api_key
+
+=cut
+
+has 'api_key_field' => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => sub { 'key' },
 );
 
 =head2 mapping (optional)
@@ -244,15 +255,30 @@ has 'header' => (
 
 =head2
 
-get/set authentication type. currently supported are only 'basic' or none
+get/set authentication type. currently supported are only 'basic', 'hash_key' or 'none'
 
-default: basic
+default: none
 
 =cut
 
 has 'auth_type' => (
-    is  => 'rw',
-    isa => 'Str',
+    is      => 'rw',
+    isa     => 'Str',
+    default => sub { 'none' },
+);
+
+=head2 default_method (optional)
+
+get/set default HTTP method
+
+default: GET
+
+=cut
+
+has 'default_method' => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => sub { 'GET' },
 );
 
 =head2 extension (optional)
@@ -270,14 +296,14 @@ has 'extension' => (
 
 get/set User Agent String
 
-default: "REST::Client::Simple $VERSION"
+default: "Web::API $VERSION"
 
 =cut
 
 has 'user_agent' => (
     is      => 'rw',
     isa     => 'Str',
-    default => sub { "REST::Client::Simple $VERSION" },
+    default => sub { __PACKAGE__ . ' ' . $VERSION },
 );
 
 =head2 timeout (optional)
@@ -295,7 +321,7 @@ has 'timeout' => (
 
 =head2 agent (optional)
 
-get/set REST::Client object
+get/set LWP::UserAgent object
 
 =cut
 
@@ -354,10 +380,29 @@ has 'debug' => (
     lazy    => 1,
 );
 
+=head2 cookies (optional)
+
+default: HTTP::Cookies->new
+
+=cut
+
 has 'cookies' => (
     is      => 'rw',
     isa     => 'HTTP::Cookies',
     default => sub { HTTP::Cookies->new },
+);
+
+has 'json' => (
+    is      => 'rw',
+    isa     => 'JSON',
+    default => sub {
+        my $js = JSON->new;
+        $js->utf8;
+        $js->allow_blessed;
+        $js->convert_blessed;
+        $js->allow_nonref;
+        $js;
+    },
 );
 
 sub _build_agent {
@@ -391,7 +436,7 @@ sub decode {
                     $data->{ uri_unescape($key) } = uri_unescape($value);
                 }
             }
-            when (/json/) { $data = JSON->new->utf8->decode($content) }
+            when (/json/) { $data = $self->json->decode($content) }
             when (/xml/) { $data = XMLin($content, forcecontent => 1) }
         }
     };
@@ -421,7 +466,7 @@ sub encode {
                 chop($payload);
             }
             when (/json/) {
-                $payload = JSON->new->utf8->allow_nonref->encode($options);
+                $payload = $self->json->encode($options);
             }
             when (/xml/) { $payload = XMLout($options); }
         }
@@ -440,10 +485,10 @@ sub encode {
 sub talk {
     my ($self, $command, $uri, $options, $content_type) = @_;
 
-    my $method = uc $command->{method};
+    my $method = uc($command->{method} || $self->default_method);
 
     $uri->userinfo($self->user . ':' . $self->api_key)
-        if ($self->auth_type and (lc $self->auth_type eq 'basic'));
+        if (lc $self->auth_type eq 'basic');
 
     my $payload;
     if (keys %$options) {
@@ -504,27 +549,29 @@ sub map_options {
     my ($self, $options, $command) = @_;
 
     # check existence of mandatory attributes
-    if ($command->{mandatory_attributes}) {
-        print "mandatory keys:\n"
-            . Dumper(\@{ $command->{mandatory_attributes} })
+    if ($command->{mandatory}) {
+        print "mandatory keys:\n" . Dumper(\@{ $command->{mandatory} })
             if $self->debug;
+
         my @missing_attrs;
-        foreach my $attr (@{ $command->{mandatory_attributes} }) {
+        foreach my $attr (@{ $command->{mandatory} }) {
             push(@missing_attrs, $attr) unless (exists $options->{$attr});
         }
+
         return { error => 'mandatory attributes for this command missing: '
                 . join(', ', @missing_attrs) }
             if @missing_attrs;
     }
 
-    unless ($command->{no_mapping}) {
+    my %opts;
+
+    # first include assumed to be already mapped default attributes
+    %opts = %{ $command->{default_attributes} }
+        if (exists $command->{default_attributes});
+
+    # then map everything in $options, overwriting detault_attributes if necessary
+    if (keys %{ $self->mapping } and not $command->{no_mapping}) {
         print "mapping hash:\n" . Dumper($self->mapping) if $self->debug;
-
-        my %opts;
-
-        # first include assumed to be already mapped default attributes
-        %opts = %{ $command->{default_attributes} }
-            if (exists $command->{default_attributes});
 
         # do the key and value mapping of options hash and overwrite defaults
         foreach my $key (keys %$options) {
@@ -534,10 +581,15 @@ sub map_options {
 
             $opts{ $newkey || $key } = $newvalue || $options->{$key};
         }
+
+        # and write everything back to $options
         $options = \%opts;
     }
+    else {
+        $options = { %opts, %$options };
+    }
 
-    # wrap all options in wrapper key if required
+    # wrap all options in wrapper key if requested
     my $wrapper_key = $command->{wrapper_key} || $self->wrapper_key;
     $options = { $wrapper_key => $options } if (defined $wrapper_key);
     print "options:\n" . Dumper($options) if $self->debug;
@@ -552,25 +604,25 @@ sub map_options {
 sub AUTOLOAD {
     my ($self, $options) = @_;
 
-    my ($name) = $AUTOLOAD =~ /([^:]+)$/;
+    my ($command) = $AUTOLOAD =~ /([^:]+)$/;
 
-    return { error => "unknown command: $name" }
-        unless (exists $self->commands->{$name});
+    return { error => "unknown command: $command" }
+        unless (exists $self->commands->{$command});
 
     # construct URI path
     my $uri  = URI->new($self->base_url);
     my $path = $uri->path;
-    $path .= '/' . $self->commands->{$name}->{path}
-        if (exists $self->commands->{$name}->{path});
-    if ($self->commands->{$name}->{require_id}) {
+    $path .= '/' . $self->commands->{$command}->{path}
+        if (exists $self->commands->{$command}->{path});
+    if ($self->commands->{$command}->{require_id}) {
         return { error => "required {id} attribute missing" }
             unless (exists $options->{id});
         my $id = delete $options->{id};
-        $path .= '/' . $self->commands->{$name}->{pre_id_path}
-            if (exists $self->commands->{$name}->{pre_id_path});
+        $path .= '/' . $self->commands->{$command}->{pre_id_path}
+            if (exists $self->commands->{$command}->{pre_id_path});
         $path .= '/' . $id;
-        $path .= '/' . $self->commands->{$name}->{post_id_path}
-            if (exists $self->commands->{$name}->{post_id_path});
+        $path .= '/' . $self->commands->{$command}->{post_id_path}
+            if (exists $self->commands->{$command}->{post_id_path});
     }
     $path .= '.' . $self->extension if (defined $self->extension);
     $uri->path($path);
@@ -578,26 +630,32 @@ sub AUTOLOAD {
     # configure in/out content types
     my $content_type;
     $content_type->{in} =
-           $self->commands->{$name}->{incoming_content_type}
-        || $self->commands->{$name}->{content_type}
+           $self->commands->{$command}->{incoming_content_type}
+        || $self->commands->{$command}->{content_type}
         || $self->incoming_content_type
         || $self->content_type;
     $content_type->{out} =
-           $self->commands->{$name}->{outgoing_content_type}
-        || $self->commands->{$name}->{content_type}
+           $self->commands->{$command}->{outgoing_content_type}
+        || $self->commands->{$command}->{content_type}
         || $self->outgoing_content_type
         || $self->content_type;
 
     # manage options
-    $options = $self->map_options($options, $self->commands->{$name})
+    $options = $self->map_options($options, $self->commands->{$command})
         if ((
                 (keys %$options)
             and ($content_type->{out} =~ m/(xml|json|urlencoded)/))
-        or (exists $self->commands->{$name}->{default_attributes}));
+        or (exists $self->commands->{$command}->{default_attributes})
+        or (exists $self->commands->{$command}->{mandatory}));
     return $options if (exists $options->{error});
 
+    # set api_key for auth_type = hash_key
+    $options->{ $self->api_key_field } = $self->api_key
+        if (lc $self->auth_type eq 'hash_key');
+
     # do the call
-    return $self->talk($self->commands->{$name}, $uri, $options, $content_type);
+    return $self->talk($self->commands->{$command}, $uri, $options,
+        $content_type);
 }
 
 =head1 AUTHOR
@@ -606,8 +664,8 @@ Tobias Kirschstein, C<< <mail at lev.geek.nz> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests to C<bug-rest-client-simple at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=REST-Client-Simple>.  I will be notified, and then you'll
+Please report any bugs or feature requests to C<bug-Web-API at rt.cpan.org>, or through
+the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Web-API>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
 
 =head1 TODO
@@ -622,7 +680,7 @@ automatically be notified of progress on your bug as I make changes.
 
 You can find documentation for this module with the perldoc command.
 
-    perldoc REST::Client::Simple
+    perldoc Web::API
 
 
 You can also look for information at:
@@ -631,19 +689,19 @@ You can also look for information at:
 
 =item * RT: CPAN's request tracker (report bugs here)
 
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=REST-Client-Simple>
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Web-API>
 
 =item * AnnoCPAN: Annotated CPAN documentation
 
-L<http://annocpan.org/dist/REST-Client-Simple>
+L<http://annocpan.org/dist/Web-API>
 
 =item * CPAN Ratings
 
-L<http://cpanratings.perl.org/d/REST-Client-Simple>
+L<http://cpanratings.perl.org/d/Web-API>
 
 =item * Search CPAN
 
-L<http://search.cpan.org/dist/REST-Client-Simple/>
+L<http://search.cpan.org/dist/Web-API/>
 
 =back
 

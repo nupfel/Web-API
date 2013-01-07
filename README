@@ -1,4 +1,4 @@
-REST-Client-Simple
+Web-API
 
 The README is used to introduce the module and provide instructions on
 how to install the module, any machine dependencies it may have (for
@@ -26,21 +26,21 @@ SUPPORT AND DOCUMENTATION
 After installing, you can find documentation for this module with the
 perldoc command.
 
-    perldoc REST::Client::Simple
+    perldoc Web::API
 
 You can also look for information at:
 
     RT, CPAN's request tracker (report bugs here)
-        http://rt.cpan.org/NoAuth/Bugs.html?Dist=REST-Client-Simple
+        http://rt.cpan.org/NoAuth/Bugs.html?Dist=Web-API
 
     AnnoCPAN, Annotated CPAN documentation
-        http://annocpan.org/dist/REST-Client-Simple
+        http://annocpan.org/dist/Web-API
 
     CPAN Ratings
-        http://cpanratings.perl.org/d/REST-Client-Simple
+        http://cpanratings.perl.org/d/Web-API
 
     Search CPAN
-        http://search.cpan.org/dist/REST-Client-Simple/
+        http://search.cpan.org/dist/Web-API/
 
 
 LICENSE AND COPYRIGHT
