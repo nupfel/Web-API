@@ -1,5 +1,8 @@
 Revision history for Web-API
 
+0.4     2013-01-07T01:38:42
+        renamed to Web::API
+
 0.3     2012-10-24T11:21:41
         replaced REST::Client with LWP::UserAgent + HTTP::Cookies for more control
         updated Module::Install due to http://weblog.bulknews.net/post/33907905561/do-not-ship-modules-with-module-install-1-04
