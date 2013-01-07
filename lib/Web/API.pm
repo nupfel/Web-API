@@ -602,12 +602,14 @@ sub map_options {
 =cut
 
 sub AUTOLOAD {
-    my ($self, $options) = @_;
+    my ($self, %options) = @_;
 
     my ($command) = $AUTOLOAD =~ /([^:]+)$/;
 
     return { error => "unknown command: $command" }
         unless (exists $self->commands->{$command});
+
+    my $options = \%options;
 
     # construct URI path
     my $uri  = URI->new($self->base_url);
