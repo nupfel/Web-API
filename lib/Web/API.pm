@@ -19,7 +19,7 @@ Web::API - A Simple base module to implement almost every RESTful API with just 
 
 =head1 VERSION
 
-Version 0.5
+Version 0.5.5
 
 =cut
 
