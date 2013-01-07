@@ -1,5 +1,8 @@
 Revision history for Web-API
 
+0.5     2013-01-07T02:13:03
+        use hash instead of hashref as input for less curly braces
+
 0.4     2013-01-07T01:38:42
         renamed to Web::API
 
