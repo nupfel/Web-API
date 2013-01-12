@@ -19,11 +19,11 @@ Web::API - A Simple base module to implement almost every RESTful API with just 
 
 =head1 VERSION
 
-Version 0.5.5
+Version 0.6
 
 =cut
 
-our $VERSION = "0.5";
+our $VERSION = "0.6";
 
 =head1 SYNOPSIS
 
@@ -32,7 +32,6 @@ Implement the RESTful API of your choice in 10 minutes, roughly.
     package Net::CloudProvider;
 
     use Any::Moose;
-    use Data::Dumper;
     with 'Web::API';
 
     our $VERSION = "0.1";
@@ -98,7 +97,7 @@ Implement the RESTful API of your choice in 10 minutes, roughly.
     sub BUILD {
         my ($self) = @_;
 
-        $self->user_agent("Net::CloudProvider $VERSION");
+        $self->user_agent(__PACKAGE__ . ' ' . $VERSION);
         $self->base_url('https://ams01.cloudprovider.net/virtual_machines');
         $self->content_type('application/json');
         $self->extension('json');
@@ -132,7 +131,6 @@ later use as:
         cpu_shares                     => 5,
         required_ip_address_assignment => 1,
     });
-    print Dumper($response);
 
 
 =head1 ATTRIBUTES
@@ -656,8 +654,12 @@ sub AUTOLOAD {
         if (lc $self->auth_type eq 'hash_key');
 
     # do the call
-    return $self->talk($self->commands->{$command}, $uri, $options,
-        $content_type);
+    my $response =
+        $self->talk($self->commands->{$command}, $uri, $options, $content_type);
+
+    print "response:\n" . Dumper($response) if $self->debug;
+
+    return $response;
 }
 
 =head1 AUTHOR
