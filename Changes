@@ -1,5 +1,10 @@
 Revision history for Web-API
 
+0.7     2013-02-28T15:06:31
+        multiple wrapper keys, get_params auth_type, better XML::Simple options
+        (please someone write proper XML encode/decode support.
+        maybe even choosable XML parser with great defaults)
+
 0.6     2013-01-12T21:30:10
         print mandrill response in debug mode
 

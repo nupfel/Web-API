@@ -16,6 +16,7 @@ requires 'XML::Simple';
 requires 'URI::Escape::XS';
 requires 'JSON';
 requires 'URI';
+requires 'URI::QueryParam';
 requires 'Carp';
 
 auto_install;

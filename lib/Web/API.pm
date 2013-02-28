@@ -9,6 +9,7 @@ use XML::Simple;
 use URI::Escape::XS qw/uri_escape uri_unescape/;
 use JSON;
 use URI;
+use URI::QueryParam;
 use Carp;
 
 our $AUTOLOAD;
@@ -19,11 +20,11 @@ Web::API - A Simple base module to implement almost every RESTful API with just 
 
 =head1 VERSION
 
-Version 0.6.6
+Version 0.7
 
 =cut
 
-our $VERSION = "0.6";
+our $VERSION = "0.7";
 
 =head1 SYNOPSIS
 
@@ -101,7 +102,7 @@ Implement the RESTful API of your choice in 10 minutes, roughly.
         $self->base_url('https://ams01.cloudprovider.net/virtual_machines');
         $self->content_type('application/json');
         $self->extension('json');
-        $self->wrapper_key('virtual_machine');
+        $self->wrapper('virtual_machine');
         $self->mapping({
                 os        => 'template_id',
                 debian    => 1,
@@ -147,7 +148,7 @@ the following keys are valid/possible:
     path
     pre_id_path
     post_id_path
-    wrapper_key
+    wrapper
     default_attributes
     mandatory
     extension
@@ -229,14 +230,13 @@ has 'mapping' => (
     default => sub { {} },
 );
 
-=head2 wrapper_key (optional)
+=head2 wrapper (optional)
 
 =cut
 
-has 'wrapper_key' => (
+has 'wrapper' => (
     is      => 'rw',
-    isa     => 'Str',
-    clearer => 'clear_wrapper_key',
+    clearer => 'clear_wrapper',
 );
 
 =head2 header (optional)
@@ -253,7 +253,7 @@ has 'header' => (
 
 =head2
 
-get/set authentication type. currently supported are only 'basic', 'hash_key' or 'none'
+get/set authentication type. currently supported are only 'basic', 'hash_key', 'get_params' or 'none'
 
 default: none
 
@@ -403,6 +403,20 @@ has 'json' => (
     },
 );
 
+has 'xml' => (
+    is      => 'rw',
+    isa     => 'XML::Simple',
+    lazy    => 1,
+    default => sub {
+        XML::Simple->new(
+            ContentKey => '-content',
+            NoAttr     => 1,
+            KeepRoot   => 1,
+            KeyAttr    => {},
+        );
+    },
+);
+
 sub _build_agent {
     my ($self) = @_;
 
@@ -434,8 +448,8 @@ sub decode {
                     $data->{ uri_unescape($key) } = uri_unescape($value);
                 }
             }
-            when (/json/) { $data = $self->json->decode($content) }
-            when (/xml/) { $data = XMLin($content, forcecontent => 1) }
+            when (/json/) { $data = $self->json->decode($content); }
+            when (/xml/) { $data = $self->xml->XMLin($content, NoAttr => 0); }
         }
     };
     return { error => "couldn't decode payload using $content_type: $@\n"
@@ -463,10 +477,8 @@ sub encode {
                     foreach (keys %$options);
                 chop($payload);
             }
-            when (/json/) {
-                $payload = $self->json->encode($options);
-            }
-            when (/xml/) { $payload = XMLout($options); }
+            when (/json/) { $payload = $self->json->encode($options); }
+            when (/xml/)  { $payload = $self->xml->XMLout($options); }
         }
     };
     return { error => "couldn't encode payload using $content_type: $@\n"
@@ -485,20 +497,38 @@ sub talk {
 
     my $method = uc($command->{method} || $self->default_method);
 
-    $uri->userinfo($self->user . ':' . $self->api_key)
-        if (lc $self->auth_type eq 'basic');
+    # handle different auth_types
+    given (lc $self->auth_type) {
+        when ('basic') { $uri->userinfo($self->user . ':' . $self->api_key); }
+        when ('hash_key') {
+            $options->{ $self->api_key_field } = $self->api_key;
+        }
+        when ('get_params') {
+            $uri->query_form(
+                $self->mapping->{user}    || 'user'    => $self->user,
+                $self->mapping->{api_key} || 'api_key' => $self->api_key,
+            );
+        }
+    }
 
+    # encode payload
     my $payload;
     if (keys %$options) {
-        $payload = $self->encode($options, $content_type->{out});
+        if ($method =~ m/^(GET|HEAD|DELETE)$/) {
 
-        # got an error while encoding, return it
-        return $payload if (ref $payload eq 'HASH' && exists $payload->{error});
+            # TODO: check whether $option is a flat hashref
 
-        print "send payload: $payload\n" if $self->debug;
+            $uri->query_param_append(%$options);
+        }
+        else {
+            $payload = $self->encode($options, $content_type->{out});
 
-        $uri .= '?' . $payload
-            if (($method eq 'GET') and ($content_type->{out} =~ m/urlencoded/));
+            # got an error while encoding? return it
+            return $payload
+                if (ref $payload eq 'HASH' && exists $payload->{error});
+
+            print "send payload: $payload\n" if $self->debug;
+        }
     }
 
     print "uri: $method $uri\n" if $self->debug;
@@ -546,6 +576,8 @@ sub talk {
 sub map_options {
     my ($self, $options, $command) = @_;
 
+    my $method = uc($command->{method} || $self->default_method);
+
     # check existence of mandatory attributes
     if ($command->{mandatory}) {
         print "mandatory keys:\n" . Dumper(\@{ $command->{mandatory} })
@@ -565,7 +597,7 @@ sub map_options {
 
     # first include assumed to be already mapped default attributes
     %opts = %{ $command->{default_attributes} }
-        if (exists $command->{default_attributes});
+        if exists $command->{default_attributes};
 
     # then map everything in $options, overwriting detault_attributes if necessary
     if (keys %{ $self->mapping } and not $command->{no_mapping}) {
@@ -587,10 +619,28 @@ sub map_options {
         $options = { %opts, %$options };
     }
 
-    # wrap all options in wrapper key if requested
-    my $wrapper_key = $command->{wrapper_key} || $self->wrapper_key;
-    $options = { $wrapper_key => $options } if (defined $wrapper_key);
+    # wrap all options in wrapper key(s) if requested
+    $options = wrap($options, $command->{wrapper} || $self->wrapper)
+        unless ($method =~ m/^(GET|HEAD|DELETE)$/);
+
     print "options:\n" . Dumper($options) if $self->debug;
+
+    return $options;
+}
+
+=head2 wrap
+
+=cut
+
+sub wrap {
+    my ($options, $wrapper) = @_;
+
+    if (ref $wrapper eq 'ARRAY') {
+        $options = { $_ => [$options] } for (reverse @{$wrapper});
+    }
+    elsif (defined $wrapper) {
+        $options = { $wrapper => $options };
+    }
 
     return $options;
 }
@@ -648,10 +698,6 @@ sub AUTOLOAD {
         or (exists $self->commands->{$command}->{default_attributes})
         or (exists $self->commands->{$command}->{mandatory}));
     return $options if (exists $options->{error});
-
-    # set api_key for auth_type = hash_key
-    $options->{ $self->api_key_field } = $self->api_key
-        if (lc $self->auth_type eq 'hash_key');
 
     # do the call
     my $response =
