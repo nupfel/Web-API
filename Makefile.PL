@@ -18,8 +18,9 @@ requires 'JSON';
 requires 'URI';
 requires 'URI::QueryParam';
 requires 'Carp';
+requires 'Net::OAuth';
+requires 'Data::Random';
 
 auto_install;
 
 WriteAll;
-

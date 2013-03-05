@@ -2,6 +2,7 @@ package Web::API;
 
 use 5.010;
 use Any::Moose 'Role';
+
 use LWP::UserAgent;
 use HTTP::Cookies;
 use Data::Dumper;
@@ -11,6 +12,10 @@ use JSON;
 use URI;
 use URI::QueryParam;
 use Carp;
+use Net::OAuth;
+use Data::Random qw(rand_chars);
+
+$Net::OAuth::PROTOCOL_VERSION = Net::OAuth::PROTOCOL_VERSION_1_0A;
 
 our $AUTOLOAD;
 
@@ -20,11 +25,11 @@ Web::API - A Simple base module to implement almost every RESTful API with just 
 
 =head1 VERSION
 
-Version 0.7.7
+Version 0.8
 
 =cut
 
-our $VERSION = "0.7";
+our $VERSION = "0.8";
 
 =head1 SYNOPSIS
 
@@ -253,7 +258,7 @@ has 'header' => (
 
 =head2
 
-get/set authentication type. currently supported are only 'basic', 'hash_key', 'get_params' or 'none'
+get/set authentication type. currently supported are only 'basic', 'hash_key', 'get_params', 'oauth_header', 'oauth_params' or 'none'
 
 default: none
 
@@ -390,6 +395,52 @@ has 'cookies' => (
     default => sub { HTTP::Cookies->new },
 );
 
+=head2 consumer_secret (required for all oauth_* auth_types)
+
+default: undef
+
+=cut
+
+has 'consumer_secret' => (
+    is  => 'rw',
+    isa => 'Str',
+);
+
+=head2 access_token (required for all oauth_* auth_types)
+
+default: undef
+
+=cut
+
+has 'access_token' => (
+    is  => 'rw',
+    isa => 'Str',
+);
+
+=head2 access_secret (required for all oauth_* auth_types)
+
+default: undef
+
+=cut
+
+has 'access_secret' => (
+    is  => 'rw',
+    isa => 'Str',
+);
+
+=head2 signature_method (required for all oauth_* auth_types)
+
+default: undef
+
+=cut
+
+has 'signature_method' => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => sub { 'HMAC-SHA1' },
+    lazy    => 1,
+);
+
 has 'json' => (
     is      => 'rw',
     isa     => 'JSON',
@@ -429,6 +480,16 @@ sub _build_agent {
 }
 
 =head1 INTERNAL SUBROUTINES/METHODS
+
+=head2 nonce
+
+generates new OAuth nonce for every request
+
+=cut
+
+sub nonce {
+    join('', rand_chars(size => 16, set => 'alphanumeric'));
+}
 
 =head2 decode
 
@@ -496,6 +557,7 @@ sub talk {
     my ($self, $command, $uri, $options, $content_type) = @_;
 
     my $method = uc($command->{method} || $self->default_method);
+    my $oauth_req;
 
     # handle different auth_types
     given (lc $self->auth_type) {
@@ -509,6 +571,26 @@ sub talk {
                 $self->mapping->{api_key} || 'api_key' => $self->api_key,
             );
         }
+        when (/^oauth/) {
+            $oauth_req = Net::OAuth->request("protected resource")->new(
+                consumer_key     => $self->api_key,
+                consumer_secret  => $self->consumer_secret,
+                request_url      => $uri,
+                request_method   => $method,
+                signature_method => $self->signature_method,
+                timestamp        => time,
+                nonce            => $self->nonce,
+                token            => $self->access_token,
+                token_secret     => $self->access_secret,
+                ($options ? (extra_params => $options) : ()),
+            );
+            $oauth_req->sign;
+        }
+        default {
+            print "WARNING: auth_type "
+                . $self->auth_type
+                . " not supported yet\n";
+        }
     }
 
     # encode payload
@@ -518,7 +600,8 @@ sub talk {
 
             # TODO: check whether $option is a flat hashref
 
-            $uri->query_param_append(%$options);
+            $uri->query_param_append(%$options)
+                unless ($self->auth_type eq 'oauth_params');
         }
         else {
             $payload = $self->encode($options, $content_type->{out});
@@ -531,9 +614,14 @@ sub talk {
         }
     }
 
-    print "uri: $method $uri\n" if $self->debug;
-    print "extra header:\n" . Dumper($self->header)
-        if (%{ $self->header } && $self->debug);
+    $uri = $oauth_req->to_url if ($self->auth_type eq 'oauth_params');
+
+    if ($self->debug) {
+        print "uri: $method $uri\n";
+        print "extra header:\n" . Dumper($self->header) if (%{ $self->header });
+        print "OAuth header: " . $oauth_req->to_authorization_header . $/
+            if ($self->auth_type eq 'oauth_header');
+    }
 
     # build headers/request
     my $headers =
@@ -543,6 +631,18 @@ sub talk {
         $request->header("Content-type" => $content_type->{out});
         $request->content($payload);
     }
+
+    # oauth POST
+    if (    $options
+        and ($method eq 'POST')
+        and ($self->auth_type =~ m/^oauth/))
+    {
+        $request->content($oauth_req->to_post_body);
+    }
+
+    # oauth_header
+    $request->header(Authorization => $oauth_req->to_authorization_header)
+        if ($self->auth_type eq 'oauth_header');
 
     # do the actual work
     $self->agent->cookie_jar($self->cookies);
@@ -722,7 +822,7 @@ automatically be notified of progress on your bug as I make changes.
 
 =over 1
 
-=item * add OAuth athentication possibility
+=item * implement support for 2- and 3-legged OAuth authentication
 
 =back
 
