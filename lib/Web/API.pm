@@ -600,8 +600,10 @@ sub talk {
 
             # TODO: check whether $option is a flat hashref
 
-            $uri->query_param_append(%$options)
-                unless ($self->auth_type eq 'oauth_params');
+            unless ($self->auth_type eq 'oauth_params') {
+                $uri->query_param_append($_ => $options->{$_})
+                    for (keys %$options);
+            }
         }
         else {
             $payload = $self->encode($options, $content_type->{out});
