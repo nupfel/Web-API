@@ -322,6 +322,22 @@ has 'timeout' => (
     required => 1,
 );
 
+=head2 strict_ssl (optional)
+
+enable/disable strict SSL certificate hostname checking
+
+default: false
+
+=cut
+
+has 'strict_ssl' => (
+    is       => 'rw',
+    isa      => 'Bool',
+    default  => sub { 0 },
+    lazy     => 1,
+    required => 1,
+);
+
 =head2 agent (optional)
 
 get/set LWP::UserAgent object
@@ -475,7 +491,7 @@ sub _build_agent {
         agent      => $self->user_agent,
         cookie_jar => $self->cookies,
         timeout    => $self->timeout,
-        ssl_opts   => { verify_hostname => 0 },
+        ssl_opts   => { verify_hostname => $self->strict_ssl },
     );
 }
 
@@ -589,7 +605,8 @@ sub talk {
         default {
             print "WARNING: auth_type "
                 . $self->auth_type
-                . " not supported yet\n";
+                . " not supported yet\n"
+                unless (lc($self->auth_type) eq 'none');
         }
     }
 
@@ -676,7 +693,7 @@ sub talk {
 =cut
 
 sub map_options {
-    my ($self, $options, $command) = @_;
+    my ($self, $options, $command, $content_type) = @_;
 
     my $method = uc($command->{method} || $self->default_method);
 
@@ -722,7 +739,8 @@ sub map_options {
     }
 
     # wrap all options in wrapper key(s) if requested
-    $options = wrap($options, $command->{wrapper} || $self->wrapper)
+    $options =
+        wrap($options, $command->{wrapper} || $self->wrapper, $content_type)
         unless ($method =~ m/^(GET|HEAD|DELETE)$/);
 
     print "options:\n" . Dumper($options) if $self->debug;
@@ -735,10 +753,18 @@ sub map_options {
 =cut
 
 sub wrap {
-    my ($options, $wrapper) = @_;
+    my ($options, $wrapper, $content_type) = @_;
 
     if (ref $wrapper eq 'ARRAY') {
-        $options = { $_ => [$options] } for (reverse @{$wrapper});
+
+        # XML needs wrapping into extra array ref layer to make XML::Simple
+        # behave correctly
+        if ($content_type =~ m/xml/) {
+            $options = { $_ => [$options] } for (reverse @{$wrapper});
+        }
+        else {
+            $options = { $_ => $options } for (reverse @{$wrapper});
+        }
     }
     elsif (defined $wrapper) {
         $options = { $wrapper => $options };
@@ -793,7 +819,8 @@ sub AUTOLOAD {
         || $self->content_type;
 
     # manage options
-    $options = $self->map_options($options, $self->commands->{$command})
+    $options = $self->map_options($options, $self->commands->{$command},
+        $content_type->{in})
         if ((
                 (keys %$options)
             and ($content_type->{out} =~ m/(xml|json|urlencoded)/))
@@ -816,17 +843,8 @@ Tobias Kirschstein, C<< <mail at lev.geek.nz> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests to C<bug-Web-API at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Web-API>.  I will be notified, and then you'll
-automatically be notified of progress on your bug as I make changes.
-
-=head1 TODO
-
-=over 1
-
-=item * implement support for 2- and 3-legged OAuth authentication
-
-=back
+Please report any bugs or feature requests through github's web interface at
+L<https://github.com/nupfel/Web-API/issues>. Pull requests welcome.
 
 =head1 SUPPORT
 
