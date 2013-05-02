@@ -1,0 +1,313 @@
+=pod
+
+=head1 NAME
+
+Web::API - Web::API - A Simple base module to implement almost every RESTful API with just a few lines of configuration
+
+=head1 VERSION
+
+version 0.9
+
+=head1 SYNOPSIS
+
+Implement the RESTful API of your choice in 10 minutes, roughly.
+
+    package Net::CloudProvider;
+
+    use Any::Moose;
+    with 'Web::API';
+
+    our $VERSION = "0.1";
+
+    has 'commands' => (
+        is      => 'rw',
+        default => sub {
+            {
+                list_nodes => { method => 'GET' },
+                node_info  => { method => 'GET', require_id => 1 },
+                create_node => {
+                    method             => 'POST',
+                    default_attributes => {
+                        allowed_hot_migrate            => 1,
+                        required_virtual_machine_build => 1,
+                        cpu_shares                     => 5,
+                        required_ip_address_assignment => 1,
+                        primary_network_id             => 1,
+                        required_automatic_backup      => 0,
+                        swap_disk_size                 => 1,
+                    },
+                    mandatory => [
+                        'label',
+                        'hostname',
+                        'template_id',
+                        'cpus',
+                        'memory',
+                        'primary_disk_size',
+                        'required_virtual_machine_build',
+                        'cpu_shares',
+                        'primary_network_id',
+                        'required_ip_address_assignment',
+                        'required_automatic_backup',
+                        'swap_disk_size',
+                    ]
+                },
+                update_node => { method => 'PUT',    require_id => 1 },
+                delete_node => { method => 'DELETE', require_id => 1 },
+                start_node  => {
+                    method       => 'POST',
+                    require_id   => 1,
+                    post_id_path => 'startup',
+                },
+                stop_node => {
+                    method       => 'POST',
+                    require_id   => 1,
+                    post_id_path => 'shutdown',
+                },
+                suspend_node => {
+                    method       => 'POST',
+                    require_id   => 1,
+                    post_id_path => 'suspend',
+                },
+            };
+        },
+    );
+
+    sub commands {
+        my ($self) = @_;
+        return $self->commands;
+    }
+
+    sub BUILD {
+        my ($self) = @_;
+
+        $self->user_agent(__PACKAGE__ . ' ' . $VERSION);
+        $self->base_url('https://ams01.cloudprovider.net/virtual_machines');
+        $self->content_type('application/json');
+        $self->extension('json');
+        $self->wrapper('virtual_machine');
+        $self->mapping({
+                os        => 'template_id',
+                debian    => 1,
+                id        => 'label',
+                disk_size => 'primary_disk_size',
+        });
+
+        return $self;
+    }
+
+    1;
+
+later use as:
+
+    use Net::CloudProvider;
+    
+    my $nc = Net::CloudProvider(user => 'foobar', api_key => 'secret');
+    my $response = $nc->create_node({
+        id                             => 'funnybox',
+        hostname                       => 'node.funnybox.com',
+        os                             => 'debian',
+        cpus                           => 2,
+        memory                         => 256,
+        disk_size                      => 5,
+        allowed_hot_migrate            => 1,
+        required_virtual_machine_build => 1,
+        cpu_shares                     => 5,
+        required_ip_address_assignment => 1,
+    });
+
+=head1 ATTRIBUTES
+
+=head2 commands
+
+most important configuration part of the module which has to be provided by the
+module you are writing.
+
+the following keys are valid/possible:
+
+    method
+    require_id
+    path
+    pre_id_path
+    post_id_path
+    wrapper
+    default_attributes
+    mandatory
+    extension
+    content_type
+    incoming_content_type
+    outgoing_content_type
+
+the request path for non require_id commands is being build as:
+
+    $base_url/$path.$extension
+
+accordingly requests with require_id:
+
+    $base_url/$pre_id_path/$id/$post_id_path.$extension
+
+whereas $id can be any arbitrary object like a domain, that the API in question
+does operations on.
+
+=head2 base_url (required)
+
+get/set base URL to API, can include paths
+
+=head2 api_key (required)
+
+get/set api_key
+
+=head2 user (optional)
+
+get/set username/account name
+
+=head2 api_key_field (optional)
+
+get/set name of the hash key in the POST data structure that has to hold the api_key
+
+=head2 mapping (optional)
+
+supply mapping table, hashref of format { key => value }
+
+default: undef
+
+=head2 wrapper (optional)
+
+=head2 header (optional)
+
+get/set custom headers sent with each request
+
+=head2
+
+get/set authentication type. currently supported are only 'basic', 'hash_key', 'get_params', 'oauth_header', 'oauth_params' or 'none'
+
+default: none
+
+=head2 default_method (optional)
+
+get/set default HTTP method
+
+default: GET
+
+=head2 extension (optional)
+
+get/set file extension, e.g. '.json'
+
+=head2 user_agent (optional)
+
+get/set User Agent String
+
+default: "Web::API $VERSION"
+
+=head2 timeout (optional)
+
+get/set LWP::UserAgent timeout
+
+=head2 strict_ssl (optional)
+
+enable/disable strict SSL certificate hostname checking
+
+default: false
+
+=head2 agent (optional)
+
+get/set LWP::UserAgent object
+
+=head2 content_type (optional)
+
+default: 'text/plain'
+
+=head2 incoming_content_type (optional)
+
+default: undef
+
+=head2 outgoing_content_type (optional)
+
+default: undef
+
+=head2 debug (optional)
+
+default: 0
+
+=head2 cookies (optional)
+
+default: HTTP::Cookies->new
+
+=head2 consumer_secret (required for all oauth_* auth_types)
+
+default: undef
+
+=head2 access_token (required for all oauth_* auth_types)
+
+default: undef
+
+=head2 access_secret (required for all oauth_* auth_types)
+
+default: undef
+
+=head2 signature_method (required for all oauth_* auth_types)
+
+default: undef
+
+=head1 INTERNAL SUBROUTINES/METHODS
+
+=head2 nonce
+
+generates new OAuth nonce for every request
+
+=head2 decode
+
+=head2 encode
+
+=head2 talk
+
+=head2 map_options
+
+=head2 wrap
+
+=head2 AUTOLOAD magic
+
+=head1 BUGS
+
+Please report any bugs or feature requests on GitHub's issue tracker L<https://github.com/nupfel/Web-API/issues>.
+Pull requests welcome.
+
+=head1 SUPPORT
+
+You can find documentation for this module with the perldoc command.
+
+    perldoc Web::API
+
+You can also look for information at:
+
+=over 4
+
+=item * GitHub repository
+
+L<https://github.com/nupfel/Web-API>
+
+=item * MetaCPAN
+
+L<https://metacpan.org/module/Web::API>
+
+=item * AnnoCPAN: Annotated CPAN documentation
+
+L<http://annocpan.org/dist/Web::API>
+
+=item * CPAN Ratings
+
+L<http://cpanratings.perl.org/d/Web::API>
+
+=back
+
+=head1 AUTHOR
+
+Tobias Kirschstein <lev@cpan.org>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is Copyright (c) 2013 by Tobias Kirschstein.
+
+This is free software, licensed under:
+
+  The (three-clause) BSD License
+

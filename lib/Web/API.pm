@@ -3,6 +3,10 @@ package Web::API;
 use 5.010;
 use Any::Moose 'Role';
 
+# ABSTRACT: Web::API - A Simple base module to implement almost every RESTful API with just a few lines of configuration
+
+# VERSION
+
 use LWP::UserAgent;
 use HTTP::Cookies;
 use Data::Dumper;
@@ -18,18 +22,6 @@ use Data::Random qw(rand_chars);
 $Net::OAuth::PROTOCOL_VERSION = Net::OAuth::PROTOCOL_VERSION_1_0A;
 
 our $AUTOLOAD;
-
-=head1 NAME
-
-Web::API - A Simple base module to implement almost every RESTful API with just a few lines of configuration
-
-=head1 VERSION
-
-Version 0.8
-
-=cut
-
-our $VERSION = "0.8";
 
 =head1 SYNOPSIS
 
@@ -837,14 +829,11 @@ sub AUTOLOAD {
     return $response;
 }
 
-=head1 AUTHOR
-
-Tobias Kirschstein, C<< <mail at lev.geek.nz> >>
-
 =head1 BUGS
 
-Please report any bugs or feature requests through github's web interface at
-L<https://github.com/nupfel/Web-API/issues>. Pull requests welcome.
+Please report any bugs or feature requests on GitHub's issue tracker L<https://github.com/nupfel/Web-API/issues>.
+Pull requests welcome.
+
 
 =head1 SUPPORT
 
@@ -857,39 +846,24 @@ You can also look for information at:
 
 =over 4
 
-=item * RT: CPAN's request tracker (report bugs here)
+=item * GitHub repository
 
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Web-API>
+L<https://github.com/nupfel/Web-API>
+
+=item * MetaCPAN
+
+L<https://metacpan.org/module/Web::API>
 
 =item * AnnoCPAN: Annotated CPAN documentation
 
-L<http://annocpan.org/dist/Web-API>
+L<http://annocpan.org/dist/Web::API>
 
 =item * CPAN Ratings
 
-L<http://cpanratings.perl.org/d/Web-API>
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/Web-API/>
+L<http://cpanratings.perl.org/d/Web::API>
 
 =back
 
-
-=head1 ACKNOWLEDGEMENTS
-
-
-=head1 LICENSE AND COPYRIGHT
-
-Copyright 2012 Tobias Kirschstein.
-
-This program is free software; you can redistribute it and/or modify it
-under the terms of either: the GNU General Public License as published
-by the Free Software Foundation; or the Artistic License.
-
-See http://dev.perl.org/licenses/ for more information.
-
-
 =cut
 
-1;
+1;    # End of Web::API
