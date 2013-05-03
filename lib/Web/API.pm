@@ -1,7 +1,7 @@
 package Web::API;
 
 use 5.010;
-use Any::Moose 'Role';
+use Mouse::Role;
 
 # ABSTRACT: Web::API - A Simple base module to implement almost every RESTful API with just a few lines of configuration
 
@@ -298,7 +298,7 @@ default: "Web::API $VERSION"
 has 'user_agent' => (
     is      => 'rw',
     isa     => 'Str',
-    default => sub { __PACKAGE__ . ' ' . $VERSION },
+    default => sub { __PACKAGE__ . ' ' . $Web::API::VERSION },
 );
 
 =head2 timeout (optional)
@@ -782,8 +782,8 @@ sub AUTOLOAD {
     # construct URI path
     my $uri  = URI->new($self->base_url);
     my $path = $uri->path;
-    $path .= '/' . $self->commands->{$command}->{path}
-        if (exists $self->commands->{$command}->{path});
+
+    # keep for backward compatibility
     if ($self->commands->{$command}->{require_id}) {
         return { error => "required {id} attribute missing" }
             unless (exists $options->{id});
@@ -794,6 +794,23 @@ sub AUTOLOAD {
         $path .= '/' . $self->commands->{$command}->{post_id_path}
             if (exists $self->commands->{$command}->{post_id_path});
     }
+    elsif (exists $self->commands->{$command}->{path}) {
+        $path .= '/' . $self->commands->{$command}->{path};
+
+        # parse all mandatory ID keys from URI path
+        # format: /path/with/some/:id/and/:another_id/fun.js
+        my @mandatory = ($self->commands->{$command}->{path} =~ m/:(\w+)/g);
+
+        # and replace placeholders
+        foreach my $key (@mandatory) {
+            return { error => "required {$key} attribute missing" }
+                unless exists $options->{$key};
+
+            my $encoded_option = uri_escape(delete $options->{$key});
+            $path =~ s/:$key/$encoded_option/gex;
+        }
+    }
+
     $path .= '.' . $self->extension if (defined $self->extension);
     $uri->path($path);
 
