@@ -496,7 +496,7 @@ generates new OAuth nonce for every request
 =cut
 
 sub nonce {
-    join('', rand_chars(size => 16, set => 'alphanumeric'));
+    return join('', rand_chars(size => 16, set => 'alphanumeric'));
 }
 
 =head2 decode
@@ -716,8 +716,9 @@ sub map_options {
 
         # do the key and value mapping of options hash and overwrite defaults
         foreach my $key (keys %$options) {
-            my $newkey = $self->mapping->{$key} if ($self->mapping->{$key});
-            my $newvalue = $self->mapping->{ $options->{$key} }
+            my ($newkey, $newvalue);
+            $newkey = $self->mapping->{$key} if ($self->mapping->{$key});
+            $newvalue = $self->mapping->{ $options->{$key} }
                 if ($self->mapping->{ $options->{$key} });
 
             $opts{ $newkey || $key } = $newvalue || $options->{$key};
