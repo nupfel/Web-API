@@ -811,6 +811,9 @@ sub AUTOLOAD {
             $path =~ s/:$key/$encoded_option/gex;
         }
     }
+    else {
+        $path .= "/$command";
+    }
 
     $path .= '.' . $self->extension if (defined $self->extension);
     $uri->path($path);
