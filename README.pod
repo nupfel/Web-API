@@ -6,7 +6,7 @@ Web::API - Web::API - A Simple base module to implement almost every RESTful API
 
 =head1 VERSION
 
-version 1.0
+version 1.1
 
 =head1 SYNOPSIS
 
@@ -247,6 +247,10 @@ default: undef
 =head2 signature_method (required for all oauth_* auth_types)
 
 default: undef
+
+=head2 oauth_post_body (required for all oauth_* auth_types)
+
+default: true
 
 =head1 INTERNAL SUBROUTINES/METHODS
 
