@@ -516,7 +516,7 @@ sub nonce {
 
 =cut
 
-sub log {
+sub log { ## no critic (ProhibitBuiltinHomonyms)
     my ($self, $msg) = @_;
     print STDERR __PACKAGE__ . ': ' . $msg . $/;
     return;
