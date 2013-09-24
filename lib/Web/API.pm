@@ -9,7 +9,7 @@ use Mouse::Role;
 
 use LWP::UserAgent;
 use HTTP::Cookies;
-use Data::Dumper;
+use Data::Dump 'dump';
 use XML::Simple;
 use URI::Escape::XS qw/uri_escape uri_unescape/;
 use JSON;
@@ -512,6 +512,16 @@ sub nonce {
     return join('', rand_chars(size => 16, set => 'alphanumeric'));
 }
 
+=head2 log
+
+=cut
+
+sub log {
+    my ($self, $msg) = @_;
+    print STDERR __PACKAGE__ . ': ' . $msg . $/;
+    return;
+}
+
 =head2 decode
 
 =cut
@@ -535,7 +545,7 @@ sub decode {
         }
     };
     return { error => "couldn't decode payload using $content_type: $@\n"
-            . Dumper($content) }
+            . dump($content) }
         if ($@ || ref \$content ne 'SCALAR');
 
     return $data;
@@ -564,7 +574,7 @@ sub encode {
         }
     };
     return { error => "couldn't encode payload using $content_type: $@\n"
-            . Dumper($options) }
+            . dump($options) }
         if ($@ || ref \$payload ne 'SCALAR');
 
     return $payload;
@@ -617,9 +627,8 @@ sub talk {
             $oauth_req->sign;
         }
         default {
-            print "WARNING: auth_type "
-                . $self->auth_type
-                . " not supported yet\n"
+            $self->log(
+                "WARNING: auth_type " . $self->auth_type . " not supported yet")
                 unless (lc($self->auth_type) eq 'none');
         }
     }
@@ -643,16 +652,17 @@ sub talk {
             return $payload
                 if (ref $payload eq 'HASH' && exists $payload->{error});
 
-            print "send payload: $payload\n" if $self->debug;
+            $self->log("send payload: $payload") if $self->debug;
         }
     }
 
     $uri = $oauth_req->to_url if ($self->auth_type eq 'oauth_params');
 
     if ($self->debug) {
-        print "uri: $method $uri\n";
-        print "extra header:\n" . Dumper($self->header) if (%{ $self->header });
-        print "OAuth header: " . $oauth_req->to_authorization_header . $/
+        $self->log("uri: $method $uri");
+        $self->log("extra header:\n" . dump($self->header))
+            if (%{ $self->header });
+        $self->log("OAuth header: " . $oauth_req->to_authorization_header)
             if ($self->auth_type eq 'oauth_header');
     }
 
@@ -682,7 +692,7 @@ sub talk {
     $self->agent->cookie_jar($self->cookies);
     my $response = $self->agent->request($request);
 
-    print "recv payload: " . $response->decoded_content . $/
+    $self->log("recv payload: " . $response->decoded_content)
         if $self->debug;
 
     # collect response headers
@@ -699,12 +709,11 @@ sub talk {
     };
 
     unless ($response->is_success || $response->is_redirect) {
-        print "error: "
-            . $response->status_line
-            . $/
-            . "message: "
-            . $response->decoded_content
-            . $/
+        $self->log("error: "
+                . $response->status_line
+                . $/
+                . "message: "
+                . $response->decoded_content)
             if $self->debug;
 
         $answer->{error} = "request failed: " . $response->status_line;
@@ -724,7 +733,7 @@ sub map_options {
 
     # check existence of mandatory attributes
     if ($command->{mandatory}) {
-        print "mandatory keys:\n" . Dumper(\@{ $command->{mandatory} })
+        $self->log("mandatory keys:\n" . dump(\@{ $command->{mandatory} }))
             if $self->debug;
 
         my @missing_attrs;
@@ -745,7 +754,7 @@ sub map_options {
 
     # then map everything in $options, overwriting detault_attributes if necessary
     if (keys %{ $self->mapping } and not $command->{no_mapping}) {
-        print "mapping hash:\n" . Dumper($self->mapping) if $self->debug;
+        $self->log("mapping hash:\n" . dump($self->mapping)) if $self->debug;
 
         # do the key and value mapping of options hash and overwrite defaults
         foreach my $key (keys %$options) {
@@ -769,7 +778,7 @@ sub map_options {
         wrap($options, $command->{wrapper} || $self->wrapper, $content_type)
         unless ($method =~ m/^(GET|HEAD|DELETE)$/);
 
-    print "options:\n" . Dumper($options) if $self->debug;
+    $self->log("options:\n" . dump($options)) if $self->debug;
 
     return $options;
 }
@@ -878,7 +887,7 @@ sub AUTOLOAD {
     my $response =
         $self->talk($self->commands->{$command}, $uri, $options, $content_type);
 
-    print "response:\n" . Dumper($response) if $self->debug;
+    $self->log("response:\n" . dump($response)) if $self->debug;
 
     return $response;
 }
