@@ -6,7 +6,7 @@ Web::API - Web::API - A Simple base module to implement almost every RESTful API
 
 =head1 VERSION
 
-version 1.1
+version 1.2
 
 =head1 SYNOPSIS
 
@@ -257,6 +257,8 @@ default: true
 =head2 nonce
 
 generates new OAuth nonce for every request
+
+=head2 log
 
 =head2 decode
 
