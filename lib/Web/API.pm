@@ -516,7 +516,7 @@ sub nonce {
 
 =cut
 
-sub log { ## no critic (ProhibitBuiltinHomonyms)
+sub log {    ## no critic (ProhibitBuiltinHomonyms)
     my ($self, $msg) = @_;
     print STDERR __PACKAGE__ . ': ' . $msg . $/;
     return;
@@ -658,17 +658,24 @@ sub talk {
 
     $uri = $oauth_req->to_url if ($self->auth_type eq 'oauth_params');
 
+    # build headers
+    my %header;
+    if (exists $command->{headers} and ref $command->{headers} eq 'HASH') {
+        %header = (%{ $self->header }, %{ $command->{headers} });
+    }
+    else {
+        %header = %{ $self->header };
+    }
+    my $headers = HTTP::Headers->new(%header, "Accept" => $content_type->{in});
+
     if ($self->debug) {
         $self->log("uri: $method $uri");
-        $self->log("extra header:\n" . dump($self->header))
-            if (%{ $self->header });
-        $self->log("OAuth header: " . $oauth_req->to_authorization_header)
+        $self->log("extra headers:\n" . dump(\%header)) if (%header);
+        $self->log("OAuth headers:\n" . $oauth_req->to_authorization_header)
             if ($self->auth_type eq 'oauth_header');
     }
 
-    # build headers/request
-    my $headers =
-        HTTP::Headers->new(%{ $self->header }, "Accept" => $content_type->{in});
+    # build request
     my $request = HTTP::Request->new($method, $uri, $headers);
     unless ($method =~ m/^(GET|HEAD|DELETE)$/) {
         $request->header("Content-type" => $content_type->{out});
