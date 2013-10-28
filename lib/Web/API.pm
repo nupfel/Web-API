@@ -186,9 +186,8 @@ get/set api_key
 =cut
 
 has 'api_key' => (
-    is       => 'rw',
-    isa      => 'Str',
-    required => 1,
+    is  => 'rw',
+    isa => 'Str',
 );
 
 =head2 user (optional)
