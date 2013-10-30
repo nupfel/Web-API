@@ -767,7 +767,7 @@ sub map_options {
             my ($newkey, $newvalue);
             $newkey = $self->mapping->{$key} if ($self->mapping->{$key});
             $newvalue = $self->mapping->{ $options->{$key} }
-                if ($self->mapping->{ $options->{$key} });
+                if ($options->{$key} and $self->mapping->{ $options->{$key} });
 
             $opts{ $newkey || $key } = $newvalue || $options->{$key};
         }
