@@ -1,7 +1,8 @@
 package Web::API;
 
-use 5.010;
+use 5.010001;
 use Mouse::Role;
+use experimental 'smartmatch';
 
 # ABSTRACT: Web::API - A Simple base module to implement almost every RESTful API with just a few lines of configuration
 
