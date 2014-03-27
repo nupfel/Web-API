@@ -871,7 +871,7 @@ sub AUTOLOAD {
         $path .= "/$command";
     }
 
-    $path .= '.' . $self->extension if (defined $self->extension);
+    $path .= '.' . $self->extension if ($self->extension);
     $uri->path($path);
 
     # configure in/out content types
