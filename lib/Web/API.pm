@@ -254,7 +254,7 @@ has 'header' => (
     default => sub { {} },
 );
 
-=head2
+=head2 auth_type
 
 get/set authentication type. currently supported are only 'basic', 'hash_key', 'get_params', 'oauth_header', 'oauth_params' or 'none'
 
