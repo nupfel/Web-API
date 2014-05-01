@@ -675,8 +675,8 @@ sub talk {
 
     if ($self->debug) {
         $self->log("uri: $method $uri");
-        $self->log("extra headers:\n" . dump(\%header)) if (%header);
-        $self->log("OAuth headers:\n" . $oauth_req->to_authorization_header)
+        $self->log("extra headers: " . dump(\%header)) if (%header);
+        $self->log("OAuth headers: " . $oauth_req->to_authorization_header)
             if ($self->auth_type eq 'oauth_header');
     }
 
