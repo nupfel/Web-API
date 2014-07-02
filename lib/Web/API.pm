@@ -456,6 +456,34 @@ has 'signature_method' => (
     lazy    => 1,
 );
 
+=head2 encoder (custom options encoding subroutine)
+
+Receives options and content-type as the only 2 arguments
+
+default: undef
+
+=cut
+
+has 'encoder' => (
+    is        => 'rw',
+    isa       => 'CodeRef',
+    predicate => 'has_encoder',
+);
+
+=head2 decoder (custom response content decoding subroutine)
+
+Receives content and content-type as the only 2 arguments
+
+default: undef
+
+=cut
+
+has 'decoder' => (
+    is        => 'rw',
+    isa       => 'CodeRef',
+    predicate => 'has_decoder',
+);
+
 =head2 oauth_post_body (required for all oauth_* auth_types)
 
 default: true
@@ -538,16 +566,24 @@ sub decode {
 
     my $data;
     eval {
-        given ($content_type) {
-            when (/plain/) { $data = $content; }
-            when (/urlencoded/) {
-                foreach (split(/&/, $content)) {
-                    my ($key, $value) = split(/=/, $_);
-                    $data->{ uri_unescape($key) } = uri_unescape($value);
+        if ($self->has_decoder) {
+            $self->log('running custom decoder') if $self->debug;
+            $data = $self->decoder->($content, $content_type);
+        }
+        else {
+            given ($content_type) {
+                when (/plain/) { $data = $content; }
+                when (/urlencoded/) {
+                    foreach (split(/&/, $content)) {
+                        my ($key, $value) = split(/=/, $_);
+                        $data->{ uri_unescape($key) } = uri_unescape($value);
+                    }
+                }
+                when (/json/) { $data = $self->json->decode($content); }
+                when (/xml/) {
+                    $data = $self->xml->XMLin($content, NoAttr => 0);
                 }
             }
-            when (/json/) { $data = $self->json->decode($content); }
-            when (/xml/) { $data = $self->xml->XMLin($content, NoAttr => 0); }
         }
     };
     return { error => "couldn't decode payload using $content_type: $@\n"
@@ -566,16 +602,24 @@ sub encode {
 
     my $payload;
     eval {
-        given ($content_type) {
-            when (/plain/) { $payload = $options; }
-            when (/urlencoded/) {
-                $payload .=
-                    uri_escape($_) . '=' . uri_escape($options->{$_}) . '&'
-                    foreach (keys %$options);
-                chop($payload);
+        # custom encoder should only be run if called by Web::API otherwise we
+        # end up calling it twice
+        if ($self->has_encoder and caller(1) eq 'Web::API') {
+            $self->log('running custom encoder') if $self->debug;
+            $payload = $self->encoder->($options, $content_type);
+        }
+        else {
+            given ($content_type) {
+                when (/plain/) { $payload = $options; }
+                when (/urlencoded/) {
+                    $payload .=
+                        uri_escape($_) . '=' . uri_escape($options->{$_}) . '&'
+                        foreach (keys %$options);
+                    chop($payload);
+                }
+                when (/json/) { $payload = $self->json->encode($options); }
+                when (/xml/)  { $payload = $self->xml->XMLout($options); }
             }
-            when (/json/) { $payload = $self->json->encode($options); }
-            when (/xml/)  { $payload = $self->xml->XMLout($options); }
         }
     };
     return { error => "couldn't encode payload using $content_type: $@\n"
