@@ -1,7 +1,9 @@
 package Web::API;
 
 use 5.010001;
-use Mouse::Role;
+use Moo::Role;
+use Types::Standard qw(Str Int Bool);
+use Type::Utils qw(class_type);
 use experimental 'smartmatch';
 
 # ABSTRACT: Web::API - A Simple base module to implement almost every RESTful API with just a few lines of configuration
@@ -36,7 +38,7 @@ Implement the RESTful API of your choice in 10 minutes, roughly.
 
     package Net::CloudProvider;
 
-    use Any::Moose;
+    use Moo; # or Moose or Role::Tiny::With or ...
     with 'Web::API';
 
     our $VERSION = "0.1";
@@ -93,11 +95,6 @@ Implement the RESTful API of your choice in 10 minutes, roughly.
             };
         },
     );
-
-    sub commands {
-        my ($self) = @_;
-        return $self->commands;
-    }
 
     sub BUILD {
         my ($self) = @_;
@@ -183,7 +180,7 @@ get/set base URL to API, can include paths
 
 has 'base_url' => (
     is  => 'rw',
-    isa => 'Str',
+    isa => Str,
 );
 
 =head2 api_key (required)
@@ -194,7 +191,7 @@ get/set api_key
 
 has 'api_key' => (
     is  => 'rw',
-    isa => 'Str',
+    isa => Str,
 );
 
 =head2 user (optional)
@@ -205,7 +202,7 @@ get/set username/account name
 
 has 'user' => (
     is  => 'rw',
-    isa => 'Str',
+    isa => Str,
 );
 
 =head2 api_key_field (optional)
@@ -216,7 +213,7 @@ get/set name of the hash key in the POST data structure that has to hold the api
 
 has 'api_key_field' => (
     is      => 'rw',
-    isa     => 'Str',
+    isa     => Str,
     default => sub { 'key' },
 );
 
@@ -264,7 +261,7 @@ default: none
 
 has 'auth_type' => (
     is      => 'rw',
-    isa     => 'Str',
+    isa     => Str,
     default => sub { 'none' },
 );
 
@@ -278,7 +275,7 @@ default: GET
 
 has 'default_method' => (
     is      => 'rw',
-    isa     => 'Str',
+    isa     => Str,
     default => sub { 'GET' },
 );
 
@@ -290,7 +287,7 @@ get/set file extension, e.g. '.json'
 
 has 'extension' => (
     is      => 'rw',
-    isa     => 'Str',
+    isa     => Str,
     default => sub { '' },
 );
 
@@ -316,7 +313,7 @@ get/set LWP::UserAgent timeout
 
 has 'timeout' => (
     is       => 'rw',
-    isa      => 'Int',
+    isa      => Int,
     default  => sub { 30 },
     required => 1,
 );
@@ -331,7 +328,7 @@ default: false
 
 has 'strict_ssl' => (
     is       => 'rw',
-    isa      => 'Bool',
+    isa      => Bool,
     default  => sub { 0 },
     lazy     => 1,
     required => 1,
@@ -345,7 +342,7 @@ get/set LWP::UserAgent object
 
 has 'agent' => (
     is       => 'rw',
-    isa      => 'LWP::UserAgent',
+    isa      => class_type('LWP::UserAgent'),
     lazy     => 1,
     required => 1,
     builder  => '_build_agent',
@@ -359,7 +356,7 @@ default: 'text/plain'
 
 has 'content_type' => (
     is      => 'rw',
-    isa     => 'Str',
+    isa     => Str,
     default => sub { 'text/plain' },
 );
 
@@ -371,7 +368,7 @@ default: undef
 
 has 'incoming_content_type' => (
     is  => 'rw',
-    isa => 'Str',
+    isa => Str,
 );
 
 =head2 outgoing_content_type (optional)
@@ -382,7 +379,7 @@ default: undef
 
 has 'outgoing_content_type' => (
     is  => 'rw',
-    isa => 'Str',
+    isa => Str,
 );
 
 =head2 debug (optional)
@@ -393,7 +390,7 @@ default: 0
 
 has 'debug' => (
     is      => 'rw',
-    isa     => 'Bool',
+    isa     => Bool,
     default => sub { 0 },
     lazy    => 1,
 );
@@ -406,7 +403,7 @@ default: HTTP::Cookies->new
 
 has 'cookies' => (
     is      => 'rw',
-    isa     => 'HTTP::Cookies',
+    isa     => class_type('HTTP::Cookies'),
     default => sub { HTTP::Cookies->new },
 );
 
@@ -418,7 +415,7 @@ default: undef
 
 has 'consumer_secret' => (
     is  => 'rw',
-    isa => 'Str',
+    isa => Str,
 );
 
 =head2 access_token (required for all oauth_* auth_types)
@@ -429,7 +426,7 @@ default: undef
 
 has 'access_token' => (
     is  => 'rw',
-    isa => 'Str',
+    isa => Str,
 );
 
 =head2 access_secret (required for all oauth_* auth_types)
@@ -440,7 +437,7 @@ default: undef
 
 has 'access_secret' => (
     is  => 'rw',
-    isa => 'Str',
+    isa => Str,
 );
 
 =head2 signature_method (required for all oauth_* auth_types)
@@ -451,7 +448,7 @@ default: undef
 
 has 'signature_method' => (
     is      => 'rw',
-    isa     => 'Str',
+    isa     => Str,
     default => sub { 'HMAC-SHA1' },
     lazy    => 1,
 );
@@ -464,14 +461,14 @@ default: true
 
 has 'oauth_post_body' => (
     is      => 'rw',
-    isa     => 'Bool',
+    isa     => Bool,
     default => sub { 1 },
     lazy    => 1,
 );
 
 has 'json' => (
     is      => 'rw',
-    isa     => 'JSON',
+    isa     => class_type('JSON'),
     default => sub {
         my $js = JSON->new;
         $js->utf8;
@@ -484,7 +481,7 @@ has 'json' => (
 
 has 'xml' => (
     is      => 'rw',
-    isa     => 'XML::Simple',
+    isa     => class_type('XML::Simple'),
     lazy    => 1,
     default => sub {
         XML::Simple->new(
