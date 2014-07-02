@@ -8,7 +8,7 @@ Web::API - Web::API - A Simple base module to implement almost every RESTful API
 
 =head1 VERSION
 
-version 1.8
+version 1.9
 
 =head1 SYNOPSIS
 
@@ -16,7 +16,7 @@ Implement the RESTful API of your choice in 10 minutes, roughly.
 
     package Net::CloudProvider;
 
-    use Any::Moose;
+    use Moo; # or Moose or Role::Tiny::With or ...
     with 'Web::API';
 
     our $VERSION = "0.1";
@@ -73,11 +73,6 @@ Implement the RESTful API of your choice in 10 minutes, roughly.
             };
         },
     );
-
-    sub commands {
-        my ($self) = @_;
-        return $self->commands;
-    }
 
     sub BUILD {
         my ($self) = @_;
