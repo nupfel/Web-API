@@ -795,8 +795,18 @@ sub map_options {
             if $self->debug;
 
         my @missing_attrs;
-        foreach my $attr (@{ $command->{mandatory} }) {
-            push(@missing_attrs, $attr) unless (exists $options->{$attr});
+        if ($content_type =~ m/xml|json/) {
+            foreach my $attr (@{ $command->{mandatory} }) {
+                my @bits = split /\./, $attr;
+                my $node = $options;
+                push(@missing_attrs, $attr) unless
+                    @bits == grep { ref $node eq "HASH" && exists $node->{$_} && ($node = $node->{$_} // {}) } @bits;
+            }
+        }
+        else {
+            foreach my $attr (@{ $command->{mandatory} }) {
+                push(@missing_attrs, $attr) unless (exists $options->{$attr});
+            }
         }
 
         return { error => 'mandatory attributes for this command missing: '
