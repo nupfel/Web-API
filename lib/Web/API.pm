@@ -30,6 +30,104 @@ our %CONTENT_TYPE = (
     xml  => 'text/xml',
 );
 
+use Class::XSAccessor {
+    accessors => [qw(
+        base_url
+        api_key
+        user
+        api_key_field
+        mapping
+        wrapper
+        header
+        auth_type
+        default_method
+        extension
+        user_agent
+        timeout
+        strict_ssl
+        content_type
+        incoming_content_type
+        outgoing_content_type
+        debug
+        cookies
+        consumer_secret
+        access_token
+        access_secret
+        signature_method
+        encode
+        decoder
+        oauth_post_body
+        _agent
+        _json
+        _xml
+    )],
+    exists_predicates => {
+        has_encoder => 'encoder',
+        has_decoder => 'decoder',
+        _has_agent  => '_agent',
+        _has_json   => '_json',
+        _has_xml    => '_xml',
+    },
+};
+
+sub new {
+    my ($class, %args) = @_;
+
+    $args{api_key_field}    //= "key";
+    $args{mapping}          //= {};
+    $args{header}           //= {};
+    $args{auth_type}        //= "none";
+    $args{default_method}   //= "GET";
+    $args{extension}        //= "";
+    $args{user_agent}       //= __PACKAGE__ . ' ' . $Web::API::VERSION;
+    $args{timeout}          //= 30;
+    $args{strict_ssl}       //= 0;
+    $args{content_type}     //= "text/plain";
+    $args{debug}            //= 0;
+    $args{cookies}          //= HTTP::Cookies->new;
+    $args{consumer_secret}  //= "";
+    $args{access_token}     //= "";
+    $args{access_secret}    //= "";
+    $args{signature_method} //= "HMAC-SHA1";
+    $args{oauth_post_body}  //= 1;
+
+    my $self = bless {}, $class;
+    $self->$_($args{$_}) for keys %args;
+
+    $self;
+}
+
+sub clear_wrapper { shift->wrapper(undef) }
+
+sub json {
+    return $_[0]->_json($_[1]) if @_ > 1;
+    return $_[0]->_json if $_[0]->_has_json;
+    return $_[0]->_json(
+        JSON->new->utf8->allow_blessed->convert_blessed->allow_nonref
+    );
+}
+
+sub xml {
+    return $_[0]->_xml($_[1]) if @_ > 1;
+    return $_[0]->_xml if $_[0]->_has_xml;
+    return $_[0]->_xml(
+        XML::Simple->new(ContentKey => '-content', NoAttr => 1, KeepRoot => 1, KeyAttr => {})
+    );
+}
+
+sub agent {
+    return $_[0]->_agent($_[1]) if @_ > 1;
+    return $_[0]->_agent if $_[0]->_has_agent;
+    return $_[0]->_agent(
+        LWP::UserAgent->new(
+            agent      => $_[0]->user_agent,
+            cookie_jar => $_[0]->cookies,
+            timeout    => $_[0]->timeout,
+            ssl_opts   => { verify_hostname => $_[0]->strict_ssl },
+        )
+    );
+}
+
 =head1 SYNOPSIS
 
 Implement the RESTful API of your choice in 10 minutes, roughly.
@@ -173,18 +271,11 @@ does operations on.
 
 =cut
 
-requires 'commands';
-
 =head2 base_url (required)
 
 get/set base URL to API, can include paths
 
 =cut
-
-has 'base_url' => (
-    is  => 'rw',
-    isa => 'Str',
-);
 
 =head2 api_key (required)
 
@@ -192,33 +283,17 @@ get/set api_key
 
 =cut
 
-has 'api_key' => (
-    is  => 'rw',
-    isa => 'Str',
-);
-
 =head2 user (optional)
 
 get/set username/account name
 
 =cut
 
-has 'user' => (
-    is  => 'rw',
-    isa => 'Str',
-);
-
 =head2 api_key_field (optional)
 
 get/set name of the hash key in the POST data structure that has to hold the api_key
 
 =cut
-
-has 'api_key_field' => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => sub { 'key' },
-);
 
 =head2 mapping (optional)
 
@@ -228,31 +303,15 @@ default: undef
 
 =cut
 
-has 'mapping' => (
-    is      => 'rw',
-    default => sub { {} },
-);
-
 =head2 wrapper (optional)
 
 =cut
-
-has 'wrapper' => (
-    is      => 'rw',
-    clearer => 'clear_wrapper',
-);
 
 =head2 header (optional)
 
 get/set custom headers sent with each request
 
 =cut
-
-has 'header' => (
-    is      => 'rw',
-    lazy    => 1,
-    default => sub { {} },
-);
 
 =head2 auth_type
 
@@ -262,12 +321,6 @@ default: none
 
 =cut
 
-has 'auth_type' => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => sub { 'none' },
-);
-
 =head2 default_method (optional)
 
 get/set default HTTP method
@@ -276,23 +329,11 @@ default: GET
 
 =cut
 
-has 'default_method' => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => sub { 'GET' },
-);
-
 =head2 extension (optional)
 
 get/set file extension, e.g. '.json'
 
 =cut
-
-has 'extension' => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => sub { '' },
-);
 
 =head2 user_agent (optional)
 
@@ -302,24 +343,11 @@ default: "Web::API $VERSION"
 
 =cut
 
-has 'user_agent' => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => sub { __PACKAGE__ . ' ' . $Web::API::VERSION },
-);
-
 =head2 timeout (optional)
 
 get/set LWP::UserAgent timeout
 
 =cut
-
-has 'timeout' => (
-    is       => 'rw',
-    isa      => 'Int',
-    default  => sub { 30 },
-    required => 1,
-);
 
 =head2 strict_ssl (optional)
 
@@ -329,27 +357,11 @@ default: false
 
 =cut
 
-has 'strict_ssl' => (
-    is       => 'rw',
-    isa      => 'Bool',
-    default  => sub { 0 },
-    lazy     => 1,
-    required => 1,
-);
-
 =head2 agent (optional)
 
 get/set LWP::UserAgent object
 
 =cut
-
-has 'agent' => (
-    is       => 'rw',
-    isa      => 'LWP::UserAgent',
-    lazy     => 1,
-    required => 1,
-    builder  => '_build_agent',
-);
 
 =head2 content_type (optional)
 
@@ -357,22 +369,11 @@ default: 'text/plain'
 
 =cut
 
-has 'content_type' => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => sub { 'text/plain' },
-);
-
 =head2 incoming_content_type (optional)
 
 default: undef
 
 =cut
-
-has 'incoming_content_type' => (
-    is  => 'rw',
-    isa => 'Str',
-);
 
 =head2 outgoing_content_type (optional)
 
@@ -380,23 +381,11 @@ default: undef
 
 =cut
 
-has 'outgoing_content_type' => (
-    is  => 'rw',
-    isa => 'Str',
-);
-
 =head2 debug (optional)
 
 default: 0
 
 =cut
-
-has 'debug' => (
-    is      => 'rw',
-    isa     => 'Bool',
-    default => sub { 0 },
-    lazy    => 1,
-);
 
 =head2 cookies (optional)
 
@@ -404,22 +393,11 @@ default: HTTP::Cookies->new
 
 =cut
 
-has 'cookies' => (
-    is      => 'rw',
-    isa     => 'HTTP::Cookies',
-    default => sub { HTTP::Cookies->new },
-);
-
 =head2 consumer_secret (required for all oauth_* auth_types)
 
 default: undef
 
 =cut
-
-has 'consumer_secret' => (
-    is  => 'rw',
-    isa => 'Str',
-);
 
 =head2 access_token (required for all oauth_* auth_types)
 
@@ -427,34 +405,17 @@ default: undef
 
 =cut
 
-has 'access_token' => (
-    is  => 'rw',
-    isa => 'Str',
-);
-
 =head2 access_secret (required for all oauth_* auth_types)
 
 default: undef
 
 =cut
 
-has 'access_secret' => (
-    is  => 'rw',
-    isa => 'Str',
-);
-
 =head2 signature_method (required for all oauth_* auth_types)
 
 default: undef
 
 =cut
-
-has 'signature_method' => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => sub { 'HMAC-SHA1' },
-    lazy    => 1,
-);
 
 =head2 encoder (custom options encoding subroutine)
 
@@ -464,12 +425,6 @@ default: undef
 
 =cut
 
-has 'encoder' => (
-    is        => 'rw',
-    isa       => 'CodeRef',
-    predicate => 'has_encoder',
-);
-
 =head2 decoder (custom response content decoding subroutine)
 
 Receives content and content-type as the only 2 arguments
@@ -478,62 +433,11 @@ default: undef
 
 =cut
 
-has 'decoder' => (
-    is        => 'rw',
-    isa       => 'CodeRef',
-    predicate => 'has_decoder',
-);
-
 =head2 oauth_post_body (required for all oauth_* auth_types)
 
 default: true
 
 =cut
-
-has 'oauth_post_body' => (
-    is      => 'rw',
-    isa     => 'Bool',
-    default => sub { 1 },
-    lazy    => 1,
-);
-
-has 'json' => (
-    is      => 'rw',
-    isa     => 'JSON',
-    default => sub {
-        my $js = JSON->new;
-        $js->utf8;
-        $js->allow_blessed;
-        $js->convert_blessed;
-        $js->allow_nonref;
-        $js;
-    },
-);
-
-has 'xml' => (
-    is      => 'rw',
-    isa     => 'XML::Simple',
-    lazy    => 1,
-    default => sub {
-        XML::Simple->new(
-            ContentKey => '-content',
-            NoAttr     => 1,
-            KeepRoot   => 1,
-            KeyAttr    => {},
-        );
-    },
-);
-
-sub _build_agent {
-    my ($self) = @_;
-
-    return LWP::UserAgent->new(
-        agent      => $self->user_agent,
-        cookie_jar => $self->cookies,
-        timeout    => $self->timeout,
-        ssl_opts   => { verify_hostname => $self->strict_ssl },
-    );
-}
 
 =head1 INTERNAL SUBROUTINES/METHODS
 
