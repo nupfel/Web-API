@@ -787,31 +787,6 @@ sub talk {
 sub map_options {
     my ($self, $options, $command, $content_type) = @_;
 
-    my $method = uc($command->{method} || $self->default_method);
-
-    # check existence of mandatory attributes
-    if ($command->{mandatory}) {
-        $self->log("mandatory keys:\n" . dump(\@{ $command->{mandatory} }))
-            if $self->debug;
-
-        my @missing_attrs;
-        foreach my $attr (@{ $command->{mandatory} }) {
-            my @bits = split /\./, $attr;
-            my $node = $options;
-
-            push(@missing_attrs, $attr)
-                unless @bits == grep {
-                       ref $node eq "HASH"
-                    && exists $node->{$_}
-                    && ($node = $node->{$_} // {})
-                } @bits;
-        }
-
-        return { error => 'mandatory attributes for this command missing: '
-                . join(', ', @missing_attrs) }
-            if @missing_attrs;
-    }
-
     my %opts;
 
     # first include assumed to be already mapped default attributes
@@ -839,7 +814,31 @@ sub map_options {
         $options = { %opts, %$options };
     }
 
+    # then check existence of mandatory attributes
+    if ($command->{mandatory}) {
+        $self->log("mandatory keys:\n" . dump(\@{ $command->{mandatory} }))
+            if $self->debug;
+
+        my @missing_attrs;
+        foreach my $attr (@{ $command->{mandatory} }) {
+            my @bits = split /\./, $attr;
+            my $node = $options;
+
+            push(@missing_attrs, $attr)
+                unless @bits == grep {
+                       ref $node eq "HASH"
+                    && exists $node->{$_}
+                    && ($node = $node->{$_} // {})
+                } @bits;
+        }
+
+        return { error => 'mandatory attributes for this command missing: '
+                . join(', ', @missing_attrs) }
+            if @missing_attrs;
+    }
+
     # wrap all options in wrapper key(s) if requested
+    my $method = uc($command->{method} || $self->default_method);
     $options =
         wrap($options, $command->{wrapper} || $self->wrapper, $content_type)
         unless ($method =~ m/^(GET|HEAD|DELETE)$/);
