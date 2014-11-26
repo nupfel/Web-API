@@ -686,7 +686,14 @@ sub talk {
     given (lc $self->auth_type) {
         when ('basic') { $uri->userinfo($self->user . ':' . $self->api_key); }
         when ('hash_key') {
-            $options->{ $self->api_key_field } = $self->api_key;
+            my $api_key_field = $self->api_key_field;
+            if ($self->mapping and not $command->{no_mapping}) {
+                $self->log("mapping api_key_field: " . $self->api_key_field)
+                    if $self->debug;
+                $api_key_field = $self->mapping->{$api_key_field}
+                    if $self->mapping->{$api_key_field};
+            }
+            $options->{$api_key_field} = $self->api_key;
         }
         when ('get_params') {
             $uri->query_form(
@@ -835,12 +842,12 @@ sub map_options {
 
     my %opts;
 
-    # first include assumed to be already mapped default attributes
+    # first include default attributes
     %opts = %{ $command->{default_attributes} }
         if exists $command->{default_attributes};
 
     # then map everything in $options, overwriting detault_attributes if necessary
-    if (keys %{ $self->mapping } and not $command->{no_mapping}) {
+    if ($self->mapping and not $command->{no_mapping}) {
         $self->log("mapping hash:\n" . dump($self->mapping)) if $self->debug;
 
         # do the key and value mapping of options hash and overwrite defaults
