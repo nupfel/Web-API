@@ -224,7 +224,7 @@ get/set amount of times a request will be retried at most
 
 default: 3
 
-=head2 retry_delay
+=head2 retry_delay (optional)
 
 get/set delay to wait between retries. accepts float for millisecond support.
 
