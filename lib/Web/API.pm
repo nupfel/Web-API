@@ -19,6 +19,7 @@ use URI::QueryParam;
 use Carp;
 use Net::OAuth;
 use Data::Random qw(rand_chars);
+use Time::HiRes 'sleep';
 
 $Net::OAuth::PROTOCOL_VERSION = Net::OAuth::PROTOCOL_VERSION_1_0A;
 
@@ -349,6 +350,47 @@ has 'agent' => (
     lazy     => 1,
     required => 1,
     builder  => '_build_agent',
+);
+
+=head2 retry_http_codes (optional)
+
+get/set array of HTTP response codes that trigger a retry of the request
+
+=cut
+
+has 'retry_http_codes' => (
+    is  => 'rw',
+    isa => 'ArrayRef',
+);
+
+=head2 retry_times (optional)
+
+get/set amount of times a request will be retried at most
+
+default: 3
+
+=cut
+
+has 'retry_times' => (
+    is      => 'rw',
+    isa     => 'Int',
+    lazy    => 1,
+    default => sub { 3 },
+);
+
+=head2 retry_delay (optional)
+
+get/set delay to wait between retries. accepts float for millisecond support.
+
+default: 1.0
+
+=cut
+
+has 'retry_delay' => (
+    is      => 'rw',
+    isa     => 'Num',
+    lazy    => 1,
+    default => sub { 1.0 },
 );
 
 =head2 content_type (optional)
@@ -744,9 +786,12 @@ sub talk {
     $request->header(Authorization => $oauth_req->to_authorization_header)
         if ($self->auth_type eq 'oauth_header');
 
-    # do the actual work
+    # add session cookies
     $self->agent->cookie_jar($self->cookies);
-    my $response = $self->agent->request($request);
+
+    # do the actual work
+    my $response = $self->request($request);
+    return $response if ref $response eq 'HASH' and exists $response->{error};
 
     $self->log("recv payload: " . $response->decoded_content)
         if $self->debug;
@@ -871,6 +916,53 @@ sub wrap {
     }
 
     return $options;
+}
+
+=head2 request
+
+retry request with delay if C<retry_http_codes> is set, otherwise just try once.
+
+=cut
+
+sub request {
+    my ($self, $request) = @_;
+
+    my $response;
+    my $err;
+
+    if ($self->retry_http_codes) {
+        my $times = $self->retry_times;
+        my $n     = 0;
+
+        while ($times-- > 0) {
+            $n++;
+            $self->log("try: $n/"
+                    . $self->retry_times
+                    . ' delay: '
+                    . $self->retry_delay . 's')
+                if $self->debug;
+
+            $response = eval { $self->agent->request($request) };
+            my $err = $@;
+            if ($err) {
+                $response->{error} = $err;
+            }
+            else {
+                $self->log("response code was: " . $response->code)
+                    if $self->debug;
+                return $response
+                    unless $response->code ~~ $self->retry_http_codes;
+            }
+
+            sleep $self->retry_delay if $times;    # Do not sleep in last time
+        }
+    }
+    else {
+        $response = eval { $self->agent->request($request) };
+        $response->{error} = $@ if $@;
+    }
+
+    return $response;
 }
 
 =head2 AUTOLOAD magic

@@ -214,6 +214,22 @@ default: false
 
 get/set LWP::UserAgent object
 
+=head2 retry_http_codes (optional)
+
+get/set array of HTTP response codes that trigger a retry of the request
+
+=head2 retry_times (optional)
+
+get/set amount of times a request will be retried at most
+
+default: 3
+
+=head2 retry_delay
+
+get/set delay to wait between retries. accepts float for millisecond support.
+
+default: 1.0
+
 =head2 content_type (optional)
 
 default: 'text/plain'
@@ -283,6 +299,10 @@ generates new OAuth nonce for every request
 =head2 map_options
 
 =head2 wrap
+
+=head2 request
+
+retry request with delay if C<retry_http_codes> is set, otherwise just try once.
 
 =head2 AUTOLOAD magic
 
