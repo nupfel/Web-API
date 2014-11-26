@@ -573,6 +573,7 @@ sub _build_agent {
         agent      => $self->user_agent,
         cookie_jar => $self->cookies,
         timeout    => $self->timeout,
+        keep_alive => 1,
         ssl_opts   => { verify_hostname => $self->strict_ssl },
     );
 }
