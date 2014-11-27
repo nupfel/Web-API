@@ -632,7 +632,7 @@ sub nonce {
 
 sub log {    ## no critic (ProhibitBuiltinHomonyms)
     my ($self, $msg) = @_;
-    print STDERR __PACKAGE__ . ': ' . $msg . $/;
+    print STDERR caller . ': ' . $msg . $/;
     return;
 }
 
