@@ -623,7 +623,7 @@ sub decode {
                     }
                 }
                 when (/json/) { $data = $self->json->decode($content); }
-                when (/xml/) {
+                when (/(xml|html)/) {
                     $data = $self->xml->XMLin($content, NoAttr => 0);
                 }
             }
