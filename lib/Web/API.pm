@@ -33,6 +33,9 @@ our %CONTENT_TYPE = (
 
 =head1 SYNOPSIS
 
+B<NOTE:> as of version 2.1 C<strict_ssl> is enabled by default for obvious security
+reasons, this may break your current library implementation, sorry.
+
 Implement the RESTful API of your choice in 10 minutes, roughly.
 
     package Net::CloudProvider;
@@ -343,14 +346,14 @@ enable/disable strict SSL certificate hostname checking as a convenience
 alternatively you can supply your own LWP::Useragent compatible agent for
 the C<agent> attribute.
 
-default: false
+default: true
 
 =cut
 
 has 'strict_ssl' => (
     is       => 'rw',
     isa      => 'Bool',
-    default  => sub { 0 },
+    default  => sub { 1 },
     lazy     => 1,
     required => 1,
 );
