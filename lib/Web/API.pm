@@ -37,7 +37,8 @@ Implement the RESTful API of your choice in 10 minutes, roughly.
 
     package Net::CloudProvider;
 
-    use Any::Moose;
+    use Mouse;
+    
     with 'Web::API';
 
     our $VERSION = "0.1";
@@ -149,28 +150,29 @@ module you are writing.
 the following keys are valid/possible:
 
     method
-    require_id
     path
-    pre_id_path
-    post_id_path
-    wrapper
-    default_attributes
     mandatory
+    default_attributes
+    headers
     extension
     content_type
     incoming_content_type
     outgoing_content_type
+    wrapper
+    require_id (depricated, use path)
+    pre_id_path (depricated, use path)
+    post_id_path (depriated, use path)
 
-the request path for non require_id commands is being build as:
+the request path for commands is being build as:
 
     $base_url/$path.$extension
 
-accordingly requests with require_id:
+an example for C<path>:
 
-    $base_url/$pre_id_path/$id/$post_id_path.$extension
+    path => 'users/:user_id/labels'
 
-whereas $id can be any arbitrary object like a domain, that the API in question
-does operations on.
+this will add C<user_id> to the list of mandatory keys for this command
+automatically.
 
 =cut
 
@@ -189,7 +191,7 @@ has 'base_url' => (
 
 =head2 api_key (required)
 
-get/set api_key
+get/set API key (also used as basic auth password)
 
 =cut
 
@@ -200,7 +202,7 @@ has 'api_key' => (
 
 =head2 user (optional)
 
-get/set username/account name
+get/set API username/account name
 
 =cut
 
@@ -211,7 +213,8 @@ has 'user' => (
 
 =head2 api_key_field (optional)
 
-get/set name of the hash key in the POST data structure that has to hold the api_key
+get/set name of the hash key that has to hold the C<api_key>
+e.g. in POST content payloads
 
 =cut
 
@@ -223,9 +226,9 @@ has 'api_key_field' => (
 
 =head2 mapping (optional)
 
-supply mapping table, hashref of format { key => value }
+supply mapping table, hashref of format { "key" => "value", ... }
 
-default: undef
+default: empty hashref, which means no mapping will happen
 
 =cut
 
@@ -236,6 +239,18 @@ has 'mapping' => (
 
 =head2 wrapper (optional)
 
+get/set name of the key that is used to wrap all options of a command in.
+unfortunately some APIs increase the depth of a hash by wrapping everything into
+a single key (who knows why...), which means this:
+
+    $wa->command(%options);
+
+turns C<%options> into:
+
+    { wrapper => \%options }
+
+before encoding and sending it off.
+
 =cut
 
 has 'wrapper' => (
@@ -245,7 +260,7 @@ has 'wrapper' => (
 
 =head2 header (optional)
 
-get/set custom headers sent with each request
+get/set custom headers sent with every request
 
 =cut
 
@@ -324,7 +339,9 @@ has 'timeout' => (
 
 =head2 strict_ssl (optional)
 
-enable/disable strict SSL certificate hostname checking
+enable/disable strict SSL certificate hostname checking as a convenience
+alternatively you can supply your own LWP::Useragent compatible agent for
+the C<agent> attribute.
 
 default: false
 
@@ -395,6 +412,11 @@ has 'retry_delay' => (
 
 =head2 content_type (optional)
 
+global content type, which is used for in and out going request/response
+headers and to encode and decode the payload if no other more specific content
+types are set, e.g. C<incoming_content_type>, C<outgoing_content_type> or
+content types set individually per command attribute.
+
 default: 'text/plain'
 
 =cut
@@ -429,7 +451,9 @@ has 'outgoing_content_type' => (
 
 =head2 debug (optional)
 
-default: 0
+enable/disabled debug logging
+
+default: false
 
 =cut
 
@@ -441,6 +465,10 @@ has 'debug' => (
 );
 
 =head2 cookies (optional)
+
+this is used to store and retrieve cookies before and after requests were made
+to keep authenticated sessions alive for the time this object exists in memory
+you can add your own cookies to be send with every request.
 
 default: HTTP::Cookies->new
 
@@ -500,7 +528,8 @@ has 'signature_method' => (
 
 =head2 encoder (custom options encoding subroutine)
 
-Receives options and content-type as the only 2 arguments
+Receives C<\%options> and C<content-type> as the only 2 arguments and has to
+return a single scalar.
 
 default: undef
 
@@ -514,7 +543,8 @@ has 'encoder' => (
 
 =head2 decoder (custom response content decoding subroutine)
 
-Receives content and content-type as the only 2 arguments
+Receives C<content> and C<content-type> as the only 2 scalar arguments and has
+to return a single hash reference.
 
 default: undef
 
@@ -527,6 +557,9 @@ has 'decoder' => (
 );
 
 =head2 oauth_post_body (required for all oauth_* auth_types)
+
+enable/disable adding of command options as extra parameters to the OAuth
+request generation and therefor be included in the OAuth signature calculation.
 
 default: true
 
