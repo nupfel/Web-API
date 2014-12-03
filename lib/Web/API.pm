@@ -351,11 +351,10 @@ default: true
 =cut
 
 has 'strict_ssl' => (
-    is       => 'rw',
-    isa      => 'Bool',
-    default  => sub { 1 },
-    lazy     => 1,
-    required => 1,
+    is      => 'rw',
+    isa     => 'Bool',
+    default => sub { 1 },
+    lazy    => 1,
 );
 
 =head2 agent (optional)

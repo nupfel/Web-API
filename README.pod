@@ -12,6 +12,9 @@ version 2.1
 
 =head1 SYNOPSIS
 
+B<NOTE:> as of version 2.1 C<strict_ssl> is enabled by default for obvious security
+reasons, this may break your current library implementation, sorry.
+
 Implement the RESTful API of your choice in 10 minutes, roughly.
 
     package Net::CloudProvider;
@@ -206,9 +209,11 @@ get/set LWP::UserAgent timeout
 
 =head2 strict_ssl (optional)
 
-enable/disable strict SSL certificate hostname checking
+enable/disable strict SSL certificate hostname checking as a convenience
+alternatively you can supply your own LWP::Useragent compatible agent for
+the C<agent> attribute.
 
-default: false
+default: true
 
 =head2 agent (optional)
 
