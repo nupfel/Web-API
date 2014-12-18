@@ -693,7 +693,10 @@ sub decode {
         }
         else {
             given ($content_type) {
-                when (/plain/) { $data = $content; }
+                when (/plain/) {
+                    chomp $content;
+                    $data = { text => $content };
+                }
                 when (/urlencoded/) {
                     foreach (split(/&/, $content)) {
                         my ($key, $value) = split(/=/, $_);
