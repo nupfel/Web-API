@@ -8,7 +8,7 @@ Web::API - Web::API - A Simple base module to implement almost every RESTful API
 
 =head1 VERSION
 
-version 2.1
+version 2.2
 
 =head1 SYNOPSIS
 
@@ -131,56 +131,68 @@ module you are writing.
 the following keys are valid/possible:
 
     method
-    require_id
     path
-    pre_id_path
-    post_id_path
-    wrapper
-    default_attributes
     mandatory
+    default_attributes
+    headers
     extension
     content_type
     incoming_content_type
     outgoing_content_type
+    wrapper
+    require_id (depricated, use path)
+    pre_id_path (depricated, use path)
+    post_id_path (depriated, use path)
 
-the request path for non require_id commands is being build as:
+the request path for commands is being build as:
 
     $base_url/$path.$extension
 
-accordingly requests with require_id:
+an example for C<path>:
 
-    $base_url/$pre_id_path/$id/$post_id_path.$extension
+    path => 'users/:user_id/labels'
 
-whereas $id can be any arbitrary object like a domain, that the API in question
-does operations on.
+this will add C<user_id> to the list of mandatory keys for this command
+automatically.
 
 =head2 base_url (required)
 
 get/set base URL to API, can include paths
 
-=head2 api_key (required)
+=head2 api_key (required in most cases)
 
-get/set api_key
+get/set API key (also used as basic auth password)
 
 =head2 user (optional)
 
-get/set username/account name
+get/set API username/account name
 
 =head2 api_key_field (optional)
 
-get/set name of the hash key in the POST data structure that has to hold the api_key
+get/set name of the hash key that has to hold the C<api_key>
+e.g. in POST content payloads
 
 =head2 mapping (optional)
 
-supply mapping table, hashref of format { key => value }
-
-default: undef
+supply mapping table, hashref of format { "key" => "value", ... }
 
 =head2 wrapper (optional)
 
+get/set name of the key that is used to wrap all options of a command in.
+unfortunately some APIs increase the depth of a hash by wrapping everything into
+a single key (who knows why...), which means this:
+
+    $wa->command(%options);
+
+turns C<%options> into:
+
+    { wrapper => \%options }
+
+before encoding and sending it off.
+
 =head2 header (optional)
 
-get/set custom headers sent with each request
+get/set custom headers sent with every request
 
 =head2 auth_type
 
@@ -224,6 +236,11 @@ get/set LWP::UserAgent object
 
 get/set array of HTTP response codes that trigger a retry of the request
 
+=head2 retry_errors (optional)
+
+define an array reference of regexes that should trigger a retry of the request
+if matched against an error found via one of the C<error_keys>
+
 =head2 retry_times (optional)
 
 get/set amount of times a request will be retried at most
@@ -238,6 +255,11 @@ default: 1.0
 
 =head2 content_type (optional)
 
+global content type, which is used for in and out going request/response
+headers and to encode and decode the payload if no other more specific content
+types are set, e.g. C<incoming_content_type>, C<outgoing_content_type> or
+content types set individually per command attribute.
+
 default: 'text/plain'
 
 =head2 incoming_content_type (optional)
@@ -250,9 +272,15 @@ default: undef
 
 =head2 debug (optional)
 
-default: 0
+enable/disabled debug logging
+
+default: false
 
 =head2 cookies (optional)
+
+this is used to store and retrieve cookies before and after requests were made
+to keep authenticated sessions alive for the time this object exists in memory
+you can add your own cookies to be send with every request.
 
 default: HTTP::Cookies->new
 
@@ -274,19 +302,39 @@ default: undef
 
 =head2 encoder (custom options encoding subroutine)
 
-Receives options and content-type as the only 2 arguments
+Receives C<\%options> and C<content-type> as the only 2 arguments and has to
+return a single scalar.
 
 default: undef
 
 =head2 decoder (custom response content decoding subroutine)
 
-Receives content and content-type as the only 2 arguments
+Receives C<content> and C<content-type> as the only 2 scalar arguments and has
+to return a single hash reference.
 
 default: undef
 
 =head2 oauth_post_body (required for all oauth_* auth_types)
 
+enable/disable adding of command options as extra parameters to the OAuth
+request generation and therefor be included in the OAuth signature calculation.
+
 default: true
+
+=head2 error_keys
+
+get/set list of array keys that will be search for in the decoded response data
+structure. the same format as for mandatory keys is supported:
+
+    some.deeply.nested.error.message
+
+will search for an error message at
+
+    $decoded_response->{some}->{deeply}->{nested}->{error}->{messsage}
+
+and if the key exists and its value is defined it will be provided as
+C<$response->{error}> and matched against all regexes from the `retry_errors`
+array ref if provided to trigger a retry on particular errors.
 
 =head1 INTERNAL SUBROUTINES/METHODS
 
@@ -304,13 +352,46 @@ generates new OAuth nonce for every request
 
 =head2 map_options
 
+=head2 key_exists
+
 =head2 wrap
 
 =head2 request
 
 retry request with delay if C<retry_http_codes> is set, otherwise just try once.
 
+=head2 needs_retry
+
+returns true if the HTTP code or error found match either C<retry_http_codes>
+or C<retry_errors> respectively.
+returns false otherwise.
+
+if C<retry_errors> are defined it will try to decode the response content and
+store the decoded structure internally so we don't have to decode again at the
+end.
+
+needs the last response object and the 'Accept' content type header from the
+request for decoding.
+
+=head2 format_response
+
+=head2 build_uri
+
+=head2 build_content_type
+
+configure in/out content types
+
+order of precedence:
+1. per command C<incoming_content_type> / C<outgoing_content_type>
+2. per command general C<content_type>
+3. content type based on file path extension (only for incoming)
+4. global C<incoming_content_type> / C<outgoing_content_type>
+5. global general C<content_type>
+
 =head2 AUTOLOAD magic
+
+install a method for each new command and call it in an eval {} to catch die()s
+and set an error in a unified way.
 
 =head1 BUGS
 
