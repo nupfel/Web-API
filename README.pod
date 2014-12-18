@@ -19,7 +19,8 @@ Implement the RESTful API of your choice in 10 minutes, roughly.
 
     package Net::CloudProvider;
 
-    use Any::Moose;
+    use Mouse;
+    
     with 'Web::API';
 
     our $VERSION = "0.1";
