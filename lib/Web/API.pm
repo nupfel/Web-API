@@ -672,7 +672,7 @@ sub nonce {
 
 sub log {    ## no critic (ProhibitBuiltinHomonyms)
     my ($self, $msg) = @_;
-    print STDERR caller . ': ' . $msg . $/;
+    print STDERR caller() . ': ' . $msg . $/;
     return;
 }
 
