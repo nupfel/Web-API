@@ -373,6 +373,11 @@ end.
 needs the last response object and the 'Accept' content type header from the
 request for decoding.
 
+=head2 find_error
+
+go through C<error_keys> and find a potential error message in the decoded/parsed
+response and return it.
+
 =head2 format_response
 
 =head2 build_uri

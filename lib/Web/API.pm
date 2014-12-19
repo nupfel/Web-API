@@ -1089,6 +1089,13 @@ sub needs_retry {
     return;
 }
 
+=head2 find_error
+
+go through C<error_keys> and find a potential error message in the decoded/parsed
+response and return it.
+
+=cut
+
 sub find_error {
     my ($self, $content) = @_;
 
