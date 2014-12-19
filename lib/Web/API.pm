@@ -893,7 +893,7 @@ sub map_options {
     %opts = %{ $command->{default_attributes} }
         if exists $command->{default_attributes};
 
-    # then map everything in $options, overwriting detault_attributes if necessary
+    # then map everything in $options, overwriting default_attributes if necessary
     if ($self->mapping and not $command->{no_mapping}) {
         $self->log("mapping hash:\n" . dump($self->mapping)) if $self->debug;
 
