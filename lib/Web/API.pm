@@ -177,6 +177,12 @@ an example for C<path>:
 this will add C<user_id> to the list of mandatory keys for this command
 automatically.
 
+alternatively, to specify an optional attribute:
+
+    path => 'users/?user_id'
+
+this will only add C<user_id> to the list of keys if it is passed.
+
 =cut
 
 requires 'commands';
@@ -1176,6 +1182,7 @@ sub build_uri {
         # parse all mandatory ID keys from URI path
         # format: /path/with/some/:id/and/:another_id/fun.js
         my @mandatory = ($path =~ m/:(\w+)/g);
+        my @optional  = ($path =~ m/\?(\w+)/g);
 
         # and replace placeholders
         foreach my $key (@mandatory) {
@@ -1184,6 +1191,11 @@ sub build_uri {
 
             my $encoded_option = uri_escape(delete $options->{$key});
             $p =~ s/:$key/$encoded_option/gex;
+        }
+        foreach my $key (@optional) {
+            my $encoded_option = uri_escape(delete $options->{$key}) || '';
+            $p =~ s/\?$key/$encoded_option/gex;
+            $p =~ s{/$}{};
         }
     }
     else {
