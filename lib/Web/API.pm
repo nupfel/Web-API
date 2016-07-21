@@ -179,7 +179,7 @@ automatically.
 
 alternatively, to specify an optional attribute:
 
-    path => 'users/?user_id'
+    path => 'users/:user_id?'
 
 this will only add C<user_id> to the list of keys if it is passed.
 
@@ -1181,8 +1181,8 @@ sub build_uri {
 
         # parse all mandatory ID keys from URI path
         # format: /path/with/some/:id/and/:another_id/fun.js
-        my @mandatory = ($path =~ m/:(\w+)/g);
-        my @optional  = ($path =~ m/\?(\w+)/g);
+        my @mandatory = map { s/^://; $_ } grep { /^:\w+[^?]$/ } split '/' => $path;
+        my @optional  = map { s/(^:|\?$)//g; $_ } grep { /^:\w+\?$/ } split '/' => $path;
 
         # and replace placeholders
         foreach my $key (@mandatory) {
@@ -1194,7 +1194,7 @@ sub build_uri {
         }
         foreach my $key (@optional) {
             my $encoded_option = uri_escape(delete $options->{$key}) || '';
-            $p =~ s/\?$key/$encoded_option/gex;
+            $p =~ s/:$key\?/$encoded_option/gex;
             $p =~ s{/$}{};
         }
     }

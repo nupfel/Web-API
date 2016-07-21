@@ -14,10 +14,10 @@ has 'commands' => (
                 path => 'mandatory/:id',
             },
             optional => {
-                path => 'optional/?id',
+                path => 'optional/:id?',
             },
             multi_level => {
-                path => 'multi-level/:id/?class',
+                path => 'multi-level/:id/:class?',
             },
         };
     },
