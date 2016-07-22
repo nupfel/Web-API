@@ -1,7 +1,8 @@
 package Web::API;
 
 use 5.010001;
-use Mouse::Role;
+use Moo::Role;
+use Types::Standard -types;
 use experimental 'smartmatch';
 
 # ABSTRACT: Web::API - A Simple base module to implement almost every RESTful API with just a few lines of configuration
@@ -187,9 +188,9 @@ get/set base URL to API, can include paths
 
 =cut
 
-has 'base_url' => (
+has base_url => (
     is  => 'rw',
-    isa => 'Str',
+    isa => Str,
 );
 
 =head2 api_key (required in most cases)
@@ -198,9 +199,9 @@ get/set API key (also used as basic auth password)
 
 =cut
 
-has 'api_key' => (
+has api_key => (
     is  => 'rw',
-    isa => 'Str',
+    isa => Str,
 );
 
 =head2 user (optional)
@@ -209,9 +210,9 @@ get/set API username/account name
 
 =cut
 
-has 'user' => (
+has user => (
     is  => 'rw',
-    isa => 'Str',
+    isa => Str,
 );
 
 =head2 api_key_field (optional)
@@ -221,9 +222,9 @@ e.g. in POST content payloads
 
 =cut
 
-has 'api_key_field' => (
+has api_key_field => (
     is      => 'rw',
-    isa     => 'Str',
+    isa     => Str,
     default => sub { 'key' },
 );
 
@@ -233,7 +234,7 @@ supply mapping table, hashref of format { "key" => "value", ... }
 
 =cut
 
-has 'mapping' => (is => 'rw');
+has mapping => (is => 'rw');
 
 =head2 wrapper (optional)
 
@@ -251,7 +252,7 @@ before encoding and sending it off.
 
 =cut
 
-has 'wrapper' => (
+has wrapper => (
     is      => 'rw',
     clearer => 'clear_wrapper',
 );
@@ -262,7 +263,7 @@ get/set custom headers sent with every request
 
 =cut
 
-has 'header' => (
+has header => (
     is      => 'rw',
     lazy    => 1,
     default => sub { {} },
@@ -276,9 +277,9 @@ default: none
 
 =cut
 
-has 'auth_type' => (
+has auth_type => (
     is      => 'rw',
-    isa     => 'Str',
+    isa     => Str,
     default => sub { 'none' },
 );
 
@@ -290,9 +291,9 @@ default: GET
 
 =cut
 
-has 'default_method' => (
+has default_method => (
     is      => 'rw',
-    isa     => 'Str',
+    isa     => Str,
     default => sub { 'GET' },
 );
 
@@ -302,9 +303,9 @@ get/set file extension, e.g. '.json'
 
 =cut
 
-has 'extension' => (
+has extension => (
     is      => 'rw',
-    isa     => 'Str',
+    isa     => Str,
     default => sub { '' },
 );
 
@@ -316,9 +317,9 @@ default: "Web::API $VERSION"
 
 =cut
 
-has 'user_agent' => (
+has user_agent => (
     is      => 'rw',
-    isa     => 'Str',
+    isa     => Str,
     default => sub { __PACKAGE__ . ' ' . $Web::API::VERSION },
 );
 
@@ -328,9 +329,9 @@ get/set LWP::UserAgent timeout
 
 =cut
 
-has 'timeout' => (
+has timeout => (
     is      => 'rw',
-    isa     => 'Int',
+    isa     => Int,
     default => sub { 30 },
     lazy    => 1,
 );
@@ -345,9 +346,9 @@ default: true
 
 =cut
 
-has 'strict_ssl' => (
+has strict_ssl => (
     is      => 'rw',
-    isa     => 'Bool',
+    isa     => Bool,
     default => sub { 1 },
     lazy    => 1,
 );
@@ -358,9 +359,9 @@ get/set LWP::UserAgent object
 
 =cut
 
-has 'agent' => (
+has agent => (
     is       => 'rw',
-    isa      => 'LWP::UserAgent',
+    isa      => InstanceOf['LWP::UserAgent'],
     lazy     => 1,
     required => 1,
     builder  => '_build_agent',
@@ -372,9 +373,9 @@ get/set array of HTTP response codes that trigger a retry of the request
 
 =cut
 
-has 'retry_http_codes' => (
+has retry_http_codes => (
     is  => 'rw',
-    isa => 'ArrayRef[Int]',
+    isa => ArrayRef[Int],
 );
 
 =head2 retry_errors (optional)
@@ -384,9 +385,9 @@ if matched against an error found via one of the C<error_keys>
 
 =cut
 
-has 'retry_errors' => (
+has retry_errors => (
     is  => 'rw',
-    isa => 'ArrayRef[RegexpRef]',
+    isa => ArrayRef[RegexpRef],
 );
 
 =head2 retry_times (optional)
@@ -397,9 +398,9 @@ default: 3
 
 =cut
 
-has 'retry_times' => (
+has retry_times => (
     is      => 'rw',
-    isa     => 'Int',
+    isa     => Int,
     lazy    => 1,
     default => sub { 3 },
 );
@@ -412,9 +413,9 @@ default: 1.0
 
 =cut
 
-has 'retry_delay' => (
+has retry_delay => (
     is      => 'rw',
-    isa     => 'Num',
+    isa     => Num,
     lazy    => 1,
     default => sub { 1.0 },
 );
@@ -430,9 +431,9 @@ default: 'text/plain'
 
 =cut
 
-has 'content_type' => (
+has content_type => (
     is      => 'rw',
-    isa     => 'Str',
+    isa     => Str,
     default => sub { 'text/plain' },
 );
 
@@ -442,9 +443,9 @@ default: undef
 
 =cut
 
-has 'incoming_content_type' => (
+has incoming_content_type => (
     is  => 'rw',
-    isa => 'Str',
+    isa => Str,
 );
 
 =head2 outgoing_content_type (optional)
@@ -453,9 +454,9 @@ default: undef
 
 =cut
 
-has 'outgoing_content_type' => (
+has outgoing_content_type => (
     is  => 'rw',
-    isa => 'Str',
+    isa => Str,
 );
 
 =head2 debug (optional)
@@ -466,9 +467,9 @@ default: false
 
 =cut
 
-has 'debug' => (
+has debug => (
     is      => 'rw',
-    isa     => 'Bool',
+    isa     => Bool,
     default => sub { 0 },
     lazy    => 1,
 );
@@ -483,9 +484,9 @@ default: HTTP::Cookies->new
 
 =cut
 
-has 'cookies' => (
+has cookies => (
     is      => 'rw',
-    isa     => 'HTTP::Cookies',
+    isa     => InstanceOf['HTTP::Cookies'],
     default => sub { HTTP::Cookies->new },
 );
 
@@ -495,9 +496,9 @@ default: undef
 
 =cut
 
-has 'consumer_secret' => (
+has consumer_secret => (
     is  => 'rw',
-    isa => 'Str',
+    isa => Str,
 );
 
 =head2 access_token (required for all oauth_* auth_types)
@@ -506,9 +507,9 @@ default: undef
 
 =cut
 
-has 'access_token' => (
+has access_token => (
     is  => 'rw',
-    isa => 'Str',
+    isa => Str,
 );
 
 =head2 access_secret (required for all oauth_* auth_types)
@@ -517,9 +518,9 @@ default: undef
 
 =cut
 
-has 'access_secret' => (
+has access_secret => (
     is  => 'rw',
-    isa => 'Str',
+    isa => Str,
 );
 
 =head2 signature_method (required for all oauth_* auth_types)
@@ -528,9 +529,9 @@ default: undef
 
 =cut
 
-has 'signature_method' => (
+has signature_method => (
     is      => 'rw',
-    isa     => 'Str',
+    isa     => Str,
     default => sub { 'HMAC-SHA1' },
     lazy    => 1,
 );
@@ -544,9 +545,9 @@ default: undef
 
 =cut
 
-has 'encoder' => (
+has encoder => (
     is        => 'rw',
-    isa       => 'CodeRef',
+    isa       => CodeRef,
     predicate => 'has_encoder',
 );
 
@@ -559,9 +560,9 @@ default: undef
 
 =cut
 
-has 'decoder' => (
+has decoder => (
     is        => 'rw',
-    isa       => 'CodeRef',
+    isa       => CodeRef,
     predicate => 'has_decoder',
 );
 
@@ -574,9 +575,9 @@ default: true
 
 =cut
 
-has 'oauth_post_body' => (
+has oauth_post_body => (
     is      => 'rw',
-    isa     => 'Bool',
+    isa     => Bool,
     default => sub { 1 },
     lazy    => 1,
 );
@@ -598,14 +599,14 @@ array ref if provided to trigger a retry on particular errors.
 
 =cut
 
-has 'error_keys' => (
+has error_keys => (
     is  => 'rw',
-    isa => 'ArrayRef[Str]',
+    isa => ArrayRef[Str],
 );
 
-has 'json' => (
+has json => (
     is      => 'rw',
-    isa     => 'JSON',
+    isa     => InstanceOf['JSON'],
     default => sub {
         my $js = JSON->new;
         $js->utf8;
@@ -616,9 +617,9 @@ has 'json' => (
     },
 );
 
-has 'xml' => (
+has xml => (
     is      => 'rw',
-    isa     => 'XML::Simple',
+    isa     => InstanceOf['XML::Simple'],
     lazy    => 1,
     default => sub {
         XML::Simple->new(
@@ -630,15 +631,15 @@ has 'xml' => (
     },
 );
 
-has '_decoded_response' => (
+has _decoded_response => (
     is      => 'rw',
-    isa     => 'Ref',
+    isa     => Ref,
     clearer => 'clear_decoded_response',
 );
 
-has '_response' => (
+has _response => (
     is      => 'rw',
-    isa     => 'HTTP::Response',
+    isa     => InstanceOf['HTTP::Response'],
     clearer => 'clear_response',
 );
 
