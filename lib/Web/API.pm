@@ -10,7 +10,7 @@ use experimental 'smartmatch';
 
 use LWP::UserAgent;
 use HTTP::Cookies;
-use Data::Dump 'dump';
+use Data::Printer colored => 1;
 use XML::Simple;
 use URI::Escape::XS qw/uri_escape uri_unescape/;
 use JSON;
@@ -711,7 +711,7 @@ sub decode {
         }
     };
 
-    die "couldn't decode payload using $content_type: $@\n" . dump($content)
+    die("couldn't decode payload using $content_type: $@\n" . np($content))
         if ($@ || ref \$content ne 'SCALAR');
 
     $self->_decoded_response($data);
@@ -750,7 +750,7 @@ sub encode {
             }
         }
     };
-    die "couldn't encode payload using $content_type: $@\n" . dump($options)
+    die("couldn't encode payload using $content_type: $@\n" . np(%$options))
         if ($@ || ref \$payload ne 'SCALAR');
 
     return $payload;
@@ -848,7 +848,7 @@ sub talk {
 
     if ($self->debug) {
         $self->log("uri: $method $uri");
-        $self->log("extra headers: " . dump(\%header)) if (%header);
+        $self->log("extra headers: " . np(%header)) if (%header);
         $self->log("OAuth headers: " . $oauth_req->to_authorization_header)
             if ($self->auth_type eq 'oauth_header');
     }
@@ -895,7 +895,7 @@ sub map_options {
 
     # then map everything in $options, overwriting default_attributes if necessary
     if ($self->mapping and not $command->{no_mapping}) {
-        $self->log("mapping hash:\n" . dump($self->mapping)) if $self->debug;
+        $self->log("mapping hash:\n" . np(%{ $self->mapping })) if $self->debug;
 
         # do the key and value mapping of options hash and overwrite defaults
         foreach my $key (keys %$options) {
@@ -916,7 +916,7 @@ sub map_options {
 
     # then check existence of mandatory attributes
     if ($command->{mandatory}) {
-        $self->log("mandatory keys:\n" . dump(\@{ $command->{mandatory} }))
+        $self->log("mandatory keys:\n" . np(@{ $command->{mandatory} }))
             if $self->debug;
 
         my @missing_attrs;
@@ -937,7 +937,7 @@ sub map_options {
         wrap($options, $command->{wrapper} || $self->wrapper, $content_type)
         unless ($method =~ m/^(GET|HEAD|DELETE)$/);
 
-    $self->log("options:\n" . dump($options)) if $self->debug;
+    $self->log("options:\n" . np(%$options)) if $self->debug;
 
     return $options;
 }
