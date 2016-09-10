@@ -128,7 +128,7 @@ later use as:
 
     use Net::CloudProvider;
     
-    my $nc = Net::CloudProvider(user => 'foobar', api_key => 'secret');
+    my $nc = Net::CloudProvider->new(user => 'foobar', api_key => 'secret');
     my $response = $nc->create_node({
         id                             => 'funnybox',
         hostname                       => 'node.funnybox.com',
