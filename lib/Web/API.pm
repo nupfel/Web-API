@@ -1153,7 +1153,7 @@ sub format_response {
 
     if ($error) {
         chomp($error);
-        $self->log("ERROR: $error");
+        $self->log("ERROR: $error") if $self->debug;
         $answer->{error} = $error;
     }
 
