@@ -8,7 +8,7 @@ Web::API - Web::API - A Simple base module to implement almost every RESTful API
 
 =head1 VERSION
 
-version 2.2
+version 2.2.1
 
 =head1 SYNOPSIS
 
@@ -107,7 +107,7 @@ later use as:
 
     use Net::CloudProvider;
     
-    my $nc = Net::CloudProvider(user => 'foobar', api_key => 'secret');
+    my $nc = Net::CloudProvider->new(user => 'foobar', api_key => 'secret');
     my $response = $nc->create_node({
         id                             => 'funnybox',
         hostname                       => 'node.funnybox.com',
@@ -283,7 +283,7 @@ to keep authenticated sessions alive for the time this object exists in memory
 you can add your own cookies to be send with every request. See
 L<HTTP::Cookies> for more information.
 
-default: HTTP::Cookies->new
+default: HTTP::Cookies->new()
 
 =head2 consumer_secret (required for all oauth_* auth_types)
 
@@ -394,10 +394,16 @@ order of precedence:
 4. global C<incoming_content_type> / C<outgoing_content_type>
 5. global general C<content_type>
 
+=head2 DESTROY
+
+catch DESTROY call and tear down / clean up if necessary
+at this point there is nothing to do though. This prevents
+AUTOLOAD from logging an unknown command error message
+
 =head2 AUTOLOAD magic
 
-install a method for each new command and call it in an C<eval {}> (or
-via L<Try::Tiny>) to catch exceptions and set an error in a unified way.
+install a method for each new command and call it in an C<eval {}> to catch
+exceptions and set an error in a unified way.
 
 =head1 BUGS
 
