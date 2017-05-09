@@ -162,9 +162,9 @@ the following keys are valid/possible:
     incoming_content_type
     outgoing_content_type
     wrapper
-    require_id (depricated, use path)
-    pre_id_path (depricated, use path)
-    post_id_path (depriated, use path)
+    require_id (deprecated, use path)
+    pre_id_path (deprecated, use path)
+    post_id_path (deprecated, use path)
 
 the request path for commands is being build as:
 
@@ -324,7 +324,7 @@ has 'user_agent' => (
 
 =head2 timeout (optional)
 
-get/set LWP::UserAgent timeout
+get/set L<LWP::UserAgent> timeout
 
 =cut
 
@@ -354,7 +354,7 @@ has 'strict_ssl' => (
 
 =head2 agent (optional)
 
-get/set LWP::UserAgent object
+get/set L<LWP::UserAgent> object
 
 =cut
 
@@ -477,9 +477,10 @@ has 'debug' => (
 
 this is used to store and retrieve cookies before and after requests were made
 to keep authenticated sessions alive for the time this object exists in memory
-you can add your own cookies to be send with every request.
+you can add your own cookies to be send with every request. See
+L<HTTP::Cookies> for more information.
 
-default: HTTP::Cookies->new
+default: HTTP::Cookies->new()
 
 =cut
 
@@ -1227,8 +1228,8 @@ sub build_content_type {
 
 =head2 AUTOLOAD magic
 
-install a method for each new command and call it in an eval {} to catch die()s
-and set an error in a unified way.
+install a method for each new command and call it in an C<eval {}> to catch
+exceptions and set an error in a unified way.
 
 =cut
 
@@ -1284,7 +1285,7 @@ Pull requests welcome.
 
 =head1 SUPPORT
 
-You can find documentation for this module with the perldoc command.
+You can find documentation for this module with the L<perldoc(1)> command.
 
     perldoc Web::API
 
@@ -1310,6 +1311,10 @@ L<http://annocpan.org/dist/Web::API>
 L<http://cpanratings.perl.org/d/Web::API>
 
 =back
+
+=head1 SEE ALSO
+
+L<HTTP::Cookies>, L<LWP::UserAgent>, L<Net::OAuth>
 
 =cut
 
