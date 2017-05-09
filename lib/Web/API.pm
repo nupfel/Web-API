@@ -1226,6 +1226,16 @@ sub build_content_type {
     };
 }
 
+=head2 DESTROY
+
+catch DESTROY call and tear down / clean up if necessary
+at this point there is nothing to do though. This prevents
+AUTOLOAD from logging an unknown command error message
+
+=cut
+
+sub DESTROY {}
+
 =head2 AUTOLOAD magic
 
 install a method for each new command and call it in an C<eval {}> to catch
