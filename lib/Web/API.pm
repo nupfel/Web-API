@@ -1123,12 +1123,13 @@ sub format_response {
 
     my $answer;
 
-    # collect response headers
     if ($response) {
+        # collect response headers
         my $response_headers;
         $response_headers->{$_} = $response->header($_)
             foreach ($response->header_field_names);
 
+        # decode content if necessary
         unless ($self->_decoded_response) {
             $self->_decoded_response(
                 eval {
@@ -1138,6 +1139,7 @@ sub format_response {
             $error ||= $@;
         }
 
+        # search for and expose errors
         $error ||= $self->find_error($self->_decoded_response);
 
         $answer = {
@@ -1145,6 +1147,7 @@ sub format_response {
             code    => $response->code,
             content => $self->_decoded_response,
             raw     => $response->content,
+            cookies => $self->cookies->get_cookies($self->base_url),
         };
 
         unless ($response->is_success || $response->is_redirect) {
