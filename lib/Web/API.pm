@@ -9,7 +9,7 @@ use experimental 'smartmatch';
 # VERSION
 
 use LWP::UserAgent;
-use HTTP::Cookies;
+use HTTP::Cookies 6.04;
 use Data::Printer colored => 1;
 use XML::Simple;
 use URI::Escape::XS qw/uri_escape uri_unescape/;
