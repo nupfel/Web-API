@@ -391,7 +391,7 @@ has 'retry_errors' => (
 
 =head2 retry_times (optional)
 
-get/set amount of times a request will be retried at most
+get/set number of times a request will be retried at most
 
 default: 3
 
