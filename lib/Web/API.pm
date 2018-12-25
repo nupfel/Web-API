@@ -1162,7 +1162,10 @@ sub format_response {
 
         # decode content if necessary
         unless ($self->_decoded_response) {
-            if (length($response->decoded_content) > 0) {
+            if (    defined $response->decoded_content
+                and length($response->decoded_content) > 0
+                and $response->decoded_content =~ m/\S/)
+            {
                 $self->_decoded_response(
                     eval {
                         $self->decode($response->decoded_content,
