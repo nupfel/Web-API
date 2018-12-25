@@ -8,7 +8,7 @@ Web::API - Web::API - A Simple base module to implement almost every RESTful API
 
 =head1 VERSION
 
-version 2.2.3
+version 2.3
 
 =head1 SYNOPSIS
 
@@ -172,6 +172,12 @@ get/set API username/account name
 get/set name of the hash key that has to hold the C<api_key>
 e.g. in POST content payloads
 
+=head2 api_version (optional)
+
+get/set API version to be used
+
+default: 1
+
 =head2 mapping (optional)
 
 supply mapping table, hashref of format { "key" => "value", ... }
@@ -196,9 +202,16 @@ get/set custom headers sent with every request
 
 =head2 auth_type
 
-get/set authentication type. currently supported are only 'basic', 'hash_key', 'get_params', 'oauth_header', 'oauth_params' or 'none'
+get/set authentication type. currently supported are only 'basic', 'header',
+'hash_key', 'get_params', 'oauth_header', 'oauth_params' or 'none'
 
 default: none
+
+=head2 auth_header (optional)
+
+get/set the name of the header used for Authorization credentials
+
+default: Authorization
 
 =head2 default_method (optional)
 

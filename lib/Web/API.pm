@@ -227,6 +227,20 @@ has 'api_key_field' => (
     default => sub { 'key' },
 );
 
+=head2 api_version (optional)
+
+get/set API version to be used
+
+default: 1
+
+=cut
+
+has 'api_version' => (
+    is      => 'rw',
+    isa     => 'Int',
+    default => sub { 1 },
+);
+
 =head2 mapping (optional)
 
 supply mapping table, hashref of format { "key" => "value", ... }
@@ -270,7 +284,8 @@ has 'header' => (
 
 =head2 auth_type
 
-get/set authentication type. currently supported are only 'basic', 'hash_key', 'get_params', 'oauth_header', 'oauth_params' or 'none'
+get/set authentication type. currently supported are only 'basic', 'header',
+'hash_key', 'get_params', 'oauth_header', 'oauth_params' or 'none'
 
 default: none
 
@@ -280,6 +295,20 @@ has 'auth_type' => (
     is      => 'rw',
     isa     => 'Str',
     default => sub { 'none' },
+);
+
+=head2 auth_header (optional)
+
+get/set the name of the header used for Authorization credentials
+
+default: Authorization
+
+=cut
+
+has 'auth_header' => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => sub { 'Authorization' },
 );
 
 =head2 default_method (optional)
@@ -770,6 +799,10 @@ sub talk {
     # handle different auth_types
     given (lc $self->auth_type) {
         when ('basic') { $uri->userinfo($self->user . ':' . $self->api_key); }
+        when ('header') {
+            $self->header->{ $self->auth_header } =
+                "Token token=" . $self->api_key;
+        }
         when ('hash_key') {
             my $api_key_field = $self->api_key_field;
             if ($self->mapping and not $command->{no_mapping}) {
@@ -838,14 +871,11 @@ sub talk {
     $uri = $oauth_req->to_url if ($self->auth_type eq 'oauth_params');
 
     # build headers
-    my %header;
+    my %header = %{ $self->header };
     if (exists $command->{headers} and ref $command->{headers} eq 'HASH') {
-        %header = (%{ $self->header }, %{ $command->{headers} });
+        %header = (%header, %{ $command->{headers} });
     }
-    else {
-        %header = %{ $self->header };
-    }
-    my $headers = HTTP::Headers->new(%header, "Accept" => $content_type->{in});
+    my $headers = HTTP::Headers->new("Accept" => $content_type->{in}, %header);
 
     if ($self->debug) {
         $self->log("uri: $method $uri");
@@ -1124,6 +1154,7 @@ sub format_response {
     my $answer;
 
     if ($response) {
+
         # collect response headers
         my $response_headers;
         $response_headers->{$_} = $response->header($_)
@@ -1131,12 +1162,14 @@ sub format_response {
 
         # decode content if necessary
         unless ($self->_decoded_response) {
-            $self->_decoded_response(
-                eval {
-                    $self->decode($response->decoded_content,
-                        ($response_headers->{'Content-Type'} || $ct));
-                });
-            $error ||= $@;
+            if (length($response->decoded_content) > 0) {
+                $self->_decoded_response(
+                    eval {
+                        $self->decode($response->decoded_content,
+                            ($response_headers->{'Content-Type'} || $ct));
+                    });
+                $error ||= $@;
+            }
         }
 
         # search for and expose errors
@@ -1237,7 +1270,7 @@ AUTOLOAD from logging an unknown command error message
 
 =cut
 
-sub DESTROY {}
+sub DESTROY { }
 
 =head2 AUTOLOAD magic
 
