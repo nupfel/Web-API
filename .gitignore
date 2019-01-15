@@ -16,3 +16,4 @@ MANIFEST.bak
 inc
 Web-API-*
 .build
+cpanfile
