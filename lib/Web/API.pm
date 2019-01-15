@@ -4,7 +4,7 @@ use 5.010001;
 use Mouse::Role;
 use experimental 'smartmatch';
 
-# ABSTRACT: Web::API - A Simple base module to implement almost every RESTful API with just a few lines of configuration
+# ABSTRACT: A Simple base module to implement almost every RESTful API with just a few lines of configuration
 
 # VERSION
 
@@ -421,7 +421,7 @@ has 'retry_errors' => (
 
 =head2 retry_times (optional)
 
-get/set amount of times a request will be retried at most
+get/set number of times a request will be retried at most
 
 default: 3
 
