@@ -339,6 +339,20 @@ has 'auth_header' => (
     default => sub { 'Authorization' },
 );
 
+=head2 auth_header_token_format
+
+get/set format of the auth_header token.
+
+default: 'Token token=%s'
+
+=cut
+
+has 'auth_header_token_format' => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => sub { 'Token token=%s' },
+);
+
 =head2 default_method (optional)
 
 get/set default HTTP method
@@ -811,7 +825,6 @@ sub encode {
         }
         else {
             given ($content_type) {
-                when (/plain/) { $payload = $options; }
                 when (/urlencoded/) {
                     $payload .=
                         uri_escape($_) . '=' . uri_escape($options->{$_}) . '&'
@@ -820,6 +833,13 @@ sub encode {
                 }
                 when (/json/) { $payload = $self->json->encode($options); }
                 when (/xml/)  { $payload = $self->xml->XMLout($options); }
+                default {
+                    if (exists $options->{payload}
+                        and defined $options->{payload})
+                    {
+                        $payload = '' . $options->{payload};
+                    }
+                }
             }
         }
     };
@@ -844,7 +864,7 @@ sub talk {
         when ('basic') { $uri->userinfo($self->user . ':' . $self->api_key); }
         when ('header') {
             $self->header->{ $self->auth_header } =
-                "Token token=" . $self->api_key;
+                sprintf($self->auth_header_token_format, $self->api_key);
         }
         when ('hash_key') {
             my $api_key_field = $self->api_key_field;
