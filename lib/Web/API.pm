@@ -780,10 +780,6 @@ sub decode {
         }
         else {
             given ($content_type) {
-                when (/plain/) {
-                    chomp $content;
-                    $data = { text => $content };
-                }
                 when (/urlencoded/) {
                     foreach (split(/&/, $content)) {
                         my ($key, $value) = split(/=/, $_);
@@ -793,6 +789,9 @@ sub decode {
                 when (/json/) { $data = $self->json->decode($content); }
                 when (/(xml|html)/) {
                     $data = $self->xml->XMLin($content, NoAttr => 0);
+                }
+                default {
+                    $data = { text => $content };
                 }
             }
         }
