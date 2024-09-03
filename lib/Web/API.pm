@@ -859,12 +859,12 @@ sub talk {
 
     # handle different auth_types
     for (lc $self->auth_type) {
-        if ('basic') { $uri->userinfo($self->user . ':' . $self->api_key); }
-        elsif ('header') {
+        if (/^basic$/) { $uri->userinfo($self->user . ':' . $self->api_key); }
+        elsif (/^header$/) {
             $self->header->{ $self->auth_header } =
                 sprintf($self->auth_header_token_format, $self->api_key);
         }
-        elsif ('hash_key') {
+        elsif (/^hash_key$/) {
             my $api_key_field = $self->api_key_field;
             if ($self->mapping and not $command->{no_mapping}) {
                 $self->log("mapping api_key_field: " . $self->api_key_field)
@@ -874,7 +874,7 @@ sub talk {
             }
             $options->{$api_key_field} = $self->api_key;
         }
-        elsif ('get_params') {
+        elsif (/^get_params$/) {
             $uri->query_form(
                 $self->mapping->{user}    || 'user'    => $self->user,
                 $self->mapping->{api_key} || 'api_key' => $self->api_key,
